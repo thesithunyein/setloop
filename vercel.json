@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "node --check api/dispatch.mjs",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/dispatch?setloopPath=:path*" },
+    { "source": "/:page(room|receipt|devnet)/:id", "destination": "/index.html" },
+    { "source": "/:page(collection|verify|docs)", "destination": "/index.html" }
+  ]
+}

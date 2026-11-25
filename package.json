@@ -1,0 +1,13 @@
+{
+  "name": "setloop",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22.13.0"},
+  "dependencies": {"@vercel/blob": "2.9.0"},
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test",
+    "build": "node src/build.mjs"
+  }
+}

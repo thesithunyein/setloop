@@ -1,0 +1,11 @@
+{
+  "name": "setloop-per-client",
+  "private": true,
+  "type": "module",
+  "scripts": {"demo": "node demo.mjs", "verify": "node verify.mjs"},
+  "dependencies": {
+    "@magicblock-labs/ephemeral-rollups-sdk": "0.14.3",
+    "@solana/web3.js": "1.98.4",
+    "tweetnacl": "1.0.3"
+  }
+}

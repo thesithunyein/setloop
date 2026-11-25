@@ -1,0 +1,6 @@
+[programs.devnet]
+setloop = "GHWCZYzCsEEiYvdCVQ5o9aYyserYiJ3TX2tqb6hS3di9"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"

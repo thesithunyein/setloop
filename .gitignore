@@ -1,0 +1,9 @@
+.data/
+dist/
+node_modules/
+target/
+.env
+.env.*
+.openai/
+.vercel/
+*.keypair.json

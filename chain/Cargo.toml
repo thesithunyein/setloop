@@ -1,0 +1,28 @@
+[package]
+name = "setloop"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+custom-heap = []
+custom-panic = []
+anchor-debug = []
+
+[dependencies]
+anchor-lang = "=1.0.2"
+ephemeral-rollups-sdk = { version = "=0.16.2", features = ["anchor", "access-control"] }
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
