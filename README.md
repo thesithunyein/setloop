@@ -26,6 +26,7 @@ For a regular room, select a round duration, then send two people the room code.
 ## Build and test the web app
 
 ```sh
+npm ci
 npm test
 npm run build
 ```
