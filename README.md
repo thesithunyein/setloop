@@ -31,7 +31,7 @@ A direct swap works only if two people each have what the other needs. Three fri
 
 Setloop collects one offer per player and looks for a cycle that satisfies all three. Each person gives one duplicate and receives their missing stamp. If any offer is missing or the offers don't form a complete cycle, everyone keeps their original stamps.
 
-The stamps are digital game pieces. You can play in a browser without signing up, paying, or connecting a wallet.
+The stamps are digital game pieces. You can play in a browser without signing up, paying, or connecting a wallet. In the devnet demo, MagicBlock privately matches the offers and commits the result to Solana. When there’s a match, one separate Solana transaction moves all three stamps between wallets.
 
 ## How it works
 
@@ -64,7 +64,7 @@ Classic rounds start with one possible offer per collector. Choice rounds start 
 2. Open the comparison round. Change only Alice to Moon. The receipt and before/after wallet balances show that every collector kept their stamps.
 3. Trade again using the same wallets. Follow the suggested offers to spend the stamps received in the first round. After finishing, a collector can send their remaining stamps to a Solana wallet they control.
 
-Setloop signs for the three hosted demo wallets. The private rollup matches the offers and commits the decision to Solana. After verifying that commitment, the service signs one separate Solana transaction for all three wallet-to-wallet stamp transfers. On retry, a receipt-specific marker in that transaction prevents the service from transferring the stamps twice. A no-match result sends no stamp transaction. The room receipt reports the rollup's round rules and simulated starting inventory. The judge page reports the actual SPL balances, including stamps carried from earlier rounds.
+Setloop signs for the three hosted demo wallets. After verifying the MagicBlock commitment, the service signs the separate stamp transfer transaction. A receipt-specific marker prevents duplicate transfers on retry. A no-match result sends no stamp transaction. Receipts label the committed round inventory and separately display the saved SPL wallet balances for the published demo rounds, including stamps carried from earlier rounds.
 
 The sponsored demo has a limited number of sessions. If live devnet is unavailable or sponsorship is exhausted, open the [verified three-round production example](https://setloop.vercel.app/blitz#verified-stamps). It includes the two SPL swaps, the no-match receipt, and a claim to another wallet. [My albums](https://setloop.vercel.app/collection) shows saved demo albums when you return in the same browser.
 
@@ -205,7 +205,7 @@ The demo can reuse three devnet test wallets via `SETLOOP_DEMO_KEY_DIR`, contain
 npm run award -- /absolute/path/to/devnet-keypair.json COMMITTED_ROOM_ADDRESS
 ```
 
-Issuance creates one three-edition SPL mint per coordinator and round, credits the three wallets in one transaction, and removes mint authority. The onchain receipt and issuance transaction make the award independently checkable. Badges live in the players’ wallets between rounds. Stamp balances used for each swap are scoped to that room. The award is coordinator-issued on devnet.
+Issuance creates one three-edition SPL mint per coordinator and round, credits the three wallets in one transaction, and removes mint authority. The onchain receipt and issuance transaction make the award independently checkable. The coordinator issues these badges on devnet. The separate live judge demo uses reusable SPL stamps that stay in the wallets between rounds.
 
 ## Project structure
 

@@ -387,8 +387,12 @@ function renderVerify() {
     <details class="verify-advanced panel"><summary>Look up a Solana test-network receipt</summary><p class="helper">Use this if Setloop gave you a Solana round address.</p><form class="form-stack" data-form="devnet-receipt"><label>Solana round address<input type="text" name="code" autocomplete="off" maxlength="44" minlength="32" spellcheck="false" required></label><p class="form-error" role="alert"></p><button class="button outline">Look up test receipt</button></form></details></div>`;
 }
 
+function loadBlitzEvidence() {
+  return fetch('/blitz-evidence.json').then(response => response.ok ? response.json() : null).catch(() => null);
+}
+
 async function renderBlitz() {
-  const published = await fetch('/blitz-evidence.json').then(response => response.ok ? response.json() : null).catch(() => null);
+  const published = await loadBlitzEvidence();
   const rounds = Array.isArray(published?.rounds) ? published.rounds : [];
   const matched = rounds.find(round => round.network === 'private-er' && round.result === 'matched');
   const noMatch = rounds.find(round => round.network === 'private-er' && round.result === 'no-match');
@@ -396,7 +400,7 @@ async function renderBlitz() {
   const stampProof = published?.stampDemo;
   main.innerHTML = `<div class="view">
     <header class="page-heading"><p class="eyebrow">MagicBlock Blitz v10</p><h1>Setloop demo and proof</h1>
-      <p class="muted">Three collectors make private offers. When the offers form a cycle, all three albums fill together.</p>
+      <p class="muted">Three collectors make private offers. MagicBlock matches the offers privately and commits the result to Solana. If there’s a match, one separate Solana transaction moves all three stamps between wallets. If the offers don’t match, everyone keeps their stamps.</p>
       <div class="actions"><a class="button accent" href="#live-demo">Run a private devnet swap</a>${matched ? `<a class="button outline" href="/devnet/${encodeURIComponent(matched.address)}">Open the verified example</a>` : ''}<a class="text-link" href="https://github.com/thesithunyein/setloop">Source on GitHub ↗</a></div></header>
     <section class="panel judge-live" id="live-demo" aria-labelledby="judge-title">
       <h2 id="judge-title">Run a private devnet swap</h2>
@@ -488,11 +492,9 @@ function mountJudge() {
         <h3>${matched ? 'All three stamps moved together' : 'No match. Everyone kept their stamps.'}</h3>
         <p>${matched ? (index === 0 ? 'Alice, Ben, and Cara all completed their albums.' : 'This swap reused the stamps already held in the three wallets.') : 'Every wallet’s stamp count is identical to its count before the round.'}</p>
         ${matched ? `<ul class="judge-transfers">${receipt.transfers.map(({from,to,stamp}) => `<li>${demoNames[from]} sent ${capitalize(stamp)} to ${demoNames[to]}</li>`).join('')}</ul>` : ''}
-        <div class="results-grid">${receipt.after.map((inventory, i) => {
-          const claim = state.claims[i];
-          return `<div>${StampAlbum(claim?.signature ? [0,0,0] : inventory,demoNames[i],{small:true})}
-            <a class="text-link" href="${explorerWallet(claim?.signature ? claim.destination : state.wallets[i])}" target="_blank" rel="noopener">${claim?.signature ? 'View receiving wallet' : 'View demo wallet'} ↗</a></div>`;
-        }).join('')}</div>
+        <h3>Wallet stamp balances at round end</h3>
+        <div class="results-grid">${receipt.after.map((inventory, i) => `<div>${StampAlbum(inventory,demoNames[i],{small:true})}
+          <a class="text-link" href="${explorerWallet(state.wallets[i])}" target="_blank" rel="noopener">View demo wallet ↗</a></div>`).join('')}</div>
         ${matched ? '' : `<details><summary>Compare the wallet balances</summary><ul class="judge-transfers">${demoNames.map((name,i) =>
           `<li><strong>${name}</strong> · ${stamps.map((type,j) => `${capitalize(type)} ${round.before[i][j]} → ${receipt.after[i][j]}`).join(', ')}</li>`
         ).join('')}</ul></details>`}
@@ -606,16 +608,29 @@ function mountJudge() {
 }
 
 async function renderDevnetReceipt(address) {
-  const receipt = await api(`/devnet/${address}`,{bearer:''});
+  const [receipt, published] = await Promise.all([api(`/devnet/${address}`,{bearer:''}),loadBlitzEvidence()]);
   const matched = receipt.result === 'matched';
   const short = value => `${value.slice(0,5)}…${value.slice(-4)}`;
+  const stampDemo = published?.stampDemo;
+  const stampRound = stampDemo?.rounds.find(round => round.address === receipt.address);
+  const nameOf = wallet => (stampRound && demoNames[stampDemo.wallets?.indexOf(wallet)]) || `Collector ${receipt.seats.indexOf(wallet)+1}`;
   main.innerHTML = `<div class="view"><div class="page-heading"><p class="eyebrow">Solana devnet · ${receipt.variant === 'choice' ? 'Choice round' : 'Classic round'}</p><h1>Committed swap receipt</h1>
-    <p class="muted">Setloop read this round from Solana and checked the program owner, album counts, and recorded transfers.</p></div>
-    <article class="panel"><p><span class="pill ${matched ? 'success' : 'warning'}">${matched ? '✓ All three sets complete' : 'No match · no stamps moved'}</span></p>
+    <p class="muted">Setloop read the committed round result from Solana and checked the program owner, round inventory, and recorded match.</p></div>
+    <article class="panel"><p><span class="pill ${matched ? 'success' : 'warning'}">${matched ? 'Swap matched' : 'No match · no stamps moved'}</span></p>
     <dl class="receipt-data"><div><dt>Round account</dt><dd class="mono">${escape(short(receipt.address))}</dd></div><div><dt>Program ID</dt><dd class="mono">${escape(short(receipt.program))}</dd></div><div><dt>Closed</dt><dd>${escape(new Date(receipt.closedAt).toLocaleString())}</dd></div></dl>
-    ${matched ? `<ul class="receipt-list">${receipt.transfers.map(({from,to,stamp:piece}) => `<li>${stamp(piece.toLowerCase())}<span><strong>Collector ${receipt.seats.indexOf(from)+1}</strong> sent ${escape(piece)} to <strong>Collector ${receipt.seats.indexOf(to)+1}</strong>.</span></li>`).join('')}</ul>` : '<p>All three albums match their starting counts.</p>'}
-    <div class="actions"><a class="button accent" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${escape(receipt.address)}?cluster=devnet">Open round in Explorer ↗</a><a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${escape(receipt.program)}?cluster=devnet">Open program ↗</a><a class="text-link" href="/verify">Find another receipt</a></div></article>
-    <div class="results-grid">${receipt.inventories.map((inventory,slot) => `<div>${StampAlbum(inventory,`Collector ${slot+1}`,{small:true})}<a class="text-link mono" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${escape(receipt.seats[slot])}?cluster=devnet">${escape(short(receipt.seats[slot]))} ↗</a></div>`).join('')}</div></div>`;
+    ${matched ? `<ul class="receipt-list">${receipt.transfers.map(({from,to,stamp:piece}) => `<li>${stamp(piece.toLowerCase())}<span><strong>${nameOf(from)}</strong>’s ${escape(piece)} matched <strong>${nameOf(to)}</strong>’s request.</span></li>`).join('')}</ul>` : '<p>The round recorded no transfers.</p>'}
+    <div class="actions"><a class="button accent" target="_blank" rel="noopener" href="${explorerWallet(receipt.address)}">Open round in Explorer ↗</a>
+      ${stampRound ? `<a class="text-link" target="_blank" rel="noopener" href="${explorerTx(stampRound.signature)}">Verify MagicBlock commitment ↗</a>` : ''}
+      <a class="text-link" target="_blank" rel="noopener" href="${explorerWallet(receipt.program)}">Open program ↗</a><a class="text-link" href="/verify">Find another receipt</a></div></article>
+    ${stampRound?.after ? `<section><h2>Wallet stamp balances at round end</h2>
+      <p class="muted">Saved SPL token balances from this verified demo round, before later trades or wallet claims.</p>
+      <div class="results-grid">${stampRound.after.map((inventory,slot) => `<div>${StampAlbum(inventory,demoNames[slot],{small:true})}<a class="text-link" target="_blank" rel="noopener" href="${explorerWallet(stampDemo.wallets[slot])}">View demo wallet ↗</a></div>`).join('')}</div>
+      ${stampRound.stampSignature ? `<div class="actions"><a class="text-link" target="_blank" rel="noopener" href="${explorerTx(stampRound.stampSignature)}">Verify all three wallet transfers ↗</a></div>` : '<p>No stamp transfer transaction was sent.</p>'}
+    </section>` : ''}
+    <details class="panel" ${stampRound?.after ? '' : 'open'}><summary>Committed round inventory</summary>
+      <p class="helper">These counts come from the round account and show the inventory the matching rules used.</p>
+      <div class="results-grid">${receipt.inventories.map((inventory,slot) => `<div>${StampAlbum(inventory,nameOf(receipt.seats[slot]),{small:true})}<a class="text-link mono" target="_blank" rel="noopener" href="${explorerWallet(receipt.seats[slot])}">${escape(short(receipt.seats[slot]))} ↗</a></div>`).join('')}</div>
+    </details></div>`;
 }
 
 async function renderCollection() {
