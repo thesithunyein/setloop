@@ -390,22 +390,38 @@ function renderVerify() {
 async function renderBlitz() {
   const published = await fetch('/blitz-evidence.json').then(response => response.ok ? response.json() : null).catch(() => null);
   const rounds = Array.isArray(published?.rounds) ? published.rounds : [];
+  const matched = rounds.find(round => round.network === 'private-er' && round.result === 'matched');
+  const noMatch = rounds.find(round => round.network === 'private-er' && round.result === 'no-match');
+  const edition = published?.collectible;
   main.innerHTML = `<div class="view">
     <header class="page-heading"><p class="eyebrow">MagicBlock Blitz v10</p><h1>Setloop demo and proof</h1>
       <p class="muted">Three collectors make private offers. When the offers form a cycle, all three albums fill together.</p>
-      <div class="actions"><a class="button accent" href="/practice?round=choice">Play a Choice round</a><a class="button outline" href="/">Start a web room</a><a class="text-link" href="https://github.com/thesithunyein/setloop">Source on GitHub ↗</a></div></header>
+      <div class="actions">${matched ? `<a class="button accent" href="/devnet/${encodeURIComponent(matched.address)}">Open the private swap receipt</a>` : ''}<a class="button ${matched ? 'outline' : 'accent'}" href="/practice?round=choice">Play a Choice round</a><a class="text-link" href="https://github.com/thesithunyein/setloop">Source on GitHub ↗</a></div></header>
+    ${matched && noMatch ? `<section class="panel verdict"><h2>Check the result in one minute</h2>
+      <ol class="guide-example proof-steps">
+        <li><strong>Try the choices.</strong> In <a href="/practice?round=choice">solo practice</a>, offer Sun, Moon, and Star in that order, then change Alice’s offer to Moon and replay.</li>
+        <li><strong>Check who can see an offer.</strong> Each devnet wallet read its own sealed offer. All six attempts to read another collector’s offer were denied before settlement.</li>
+        <li><strong>Compare the commitments.</strong> The <a href="/devnet/${encodeURIComponent(matched.address)}">matched receipt</a> shows all three albums completed. The <a href="/devnet/${encodeURIComponent(noMatch.address)}">no-match receipt</a> shows all three albums unchanged. Both were committed back to Solana.</li>
+      </ol></section>` : ''}
     <section class="panel"><h2>MagicBlock devnet evidence</h2>
-      ${rounds.length ? `<p>These proof rounds used three devnet player wallets and MagicBlock’s Private Ephemeral Rollup. The public receipt reads the room account from Solana. The everyday web rooms use Setloop’s server ledger.</p>
+      ${published?.program ? `<div class="actions"><a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${encodeURIComponent(published.program)}?cluster=devnet">Deployed program ↗</a><a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/tx/${encodeURIComponent(published.deployment)}?cluster=devnet">Deployment transaction ↗</a></div>` : ''}
+      ${rounds.length ? `<p>These proof rounds used three devnet player wallets and MagicBlock’s Ephemeral Rollup. The receipt reads the committed room account from Solana. The everyday web rooms use Setloop’s server ledger.</p>
         <div class="collection-list">${rounds.map(round => `<article class="panel">
           <h3>${round.result === 'matched' ? 'Matched round · three albums completed' : 'No match · all albums unchanged'}</h3>
+          <p class="helper">${round.network === 'private-er' ? 'Private Ephemeral Rollup · cross-seat privacy checked' : 'Public Ephemeral Rollup · synthetic offers'}</p>
           <p class="mono small">${escape(round.address)}</p>
           <div class="actions"><a class="button outline compact" href="/devnet/${encodeURIComponent(round.address)}">Read committed receipt</a>
           <a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/tx/${encodeURIComponent(round.signature)}?cluster=devnet">Commitment transaction ↗</a>
           ${round.delegation ? `<a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/tx/${encodeURIComponent(round.delegation)}?cluster=devnet">Room delegation ↗</a>` : ''}</div></article>`).join('')}</div>`
-      : '<p>Devnet deployment evidence is pending. A live server-ledger swap is available below.</p>'}
+      : '<p>Devnet settlement evidence is pending. A live server-ledger swap is available below.</p>'}
+      ${published?.privateDelegation ? `<p class="room-bottom">A separate room delegated to the private validator. End-to-end private settlement is pending while the private RPC is unavailable. <a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/tx/${encodeURIComponent(published.privateDelegation.signature)}?cluster=devnet">Verify private delegation ↗</a></p>` : ''}
     </section>
+    ${edition ? `<section class="panel participants"><h2>Collectors keep their completion badges</h2>
+      <p>Each of three devnet wallets received one transferable badge after a matched round. The wallets kept those badges through later rounds. The edition is fixed at three. The stamp counts used to match offers remain specific to each room.</p>
+      <div class="actions"><a class="button outline compact" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${encodeURIComponent(edition.mint)}?cluster=devnet">Badge mint ↗</a><a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/tx/${encodeURIComponent(edition.signature)}?cluster=devnet">Issuance transaction ↗</a><a class="text-link" href="/devnet/${encodeURIComponent(edition.afterRound)}">Later round with the same wallets ↗</a></div>
+      <div class="actions">${edition.recipients.map(({account},i) => `<a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${encodeURIComponent(account)}?cluster=devnet">Collector ${i+1}’s token account ↗</a>`).join('')}</div></section>` : ''}
     <section class="panel participants"><h2>Try the product</h2><p>In Choice rounds, every player has two valid duplicates they can give. Make offers for all three players, then change one offer to see when a swap fails.</p>
-    <div class="actions"><a class="button outline" href="/practice?round=choice">Practice both outcomes</a><a class="text-link" href="/receipt/A4T4S3">See a live web receipt ↗</a></div></section></div>`;
+    <div class="actions"><a class="button outline" href="/practice?round=choice">Practice both outcomes</a><a class="text-link" href="/receipt/ZUZSQ4">Matched web receipt ↗</a><a class="text-link" href="/receipt/XQYB42">No-match web receipt ↗</a></div></section></div>`;
 }
 
 async function renderDevnetReceipt(address) {

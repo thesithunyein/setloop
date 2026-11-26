@@ -1120,6 +1120,15 @@ h3 {
   padding: 12px 17px 16px;
   border-top: 1px solid var(--line);
 }
+.verdict {
+  margin-bottom: 18px;
+}
+.proof-steps {
+  padding: 14px 20px 14px 40px;
+}
+.proof-steps li + li {
+  margin-top: 8px;
+}
 .practice-choice input {
   width: 20px;
   height: 20px;

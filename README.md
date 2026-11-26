@@ -17,6 +17,7 @@
 
 | Start here | What you can verify |
 | --- | --- |
+| [Blitz demo and proof](https://setloop.vercel.app/blitz) | Deployed Solana program, MagicBlock delegation, and committed matched and no-match rounds. |
 | [Practice a Choice round](https://setloop.vercel.app/practice?round=choice) | Pick one of two valid offers for each collector. A round can close without a match even when all three offers were saved. |
 | [Play with two friends](https://setloop.vercel.app/) | Create a room, share its code, and save one private offer per player. |
 | [Open a verified production receipt](https://setloop.vercel.app/receipt/A4T4S3) | See three completed transfers and the browser's check of the receipt and album totals. |
@@ -54,7 +55,8 @@ Classic rounds start with one possible offer per collector. Choice rounds start 
 | Hosted multiplayer | Live on Vercel with private Blob storage | A three-player production test verified offer isolation, matching, and public receipt access. [Receipt](https://setloop.vercel.app/receipt/A4T4S3) |
 | Solo practice | Live in the browser | Uses the same matching rules and supports both outcomes. [Try it](https://setloop.vercel.app/practice) |
 | Local multiplayer | Runs with Node and SQLite | Tests cover concurrent joins and offers, repeated closes, and no-match rounds. [Tests](test/rooms.test.mjs) |
-| Solana and MagicBlock | Experimental devnet integration | Program and client are included. A full deployment and three-wallet settlement still need end-to-end verification. [Setup](#experimental-solana-and-magicblock) |
+| Solana and MagicBlock | Private ER match and no-match verified on devnet | Three wallets could read their own offers and were denied all six cross-seat reads in each run. [Matched receipt](https://setloop.vercel.app/devnet/G5T1hqXX9Y66GqztrR6qokJqfejzkW7DzK4nRhQJyPWN) · [No-match receipt](https://setloop.vercel.app/devnet/AUVS6efh9zQ75h1wnPbRfME13VK67UkR3XDr3CosMau7) |
+| Collector ownership | Fixed-supply devnet completion badges | Three badges were issued to three wallets. The same wallets retained their badges after a later no-match round. [Badge mint](https://explorer.solana.com/address/hXKUAee2Yrh8gaEp1XqFoPd2bjDNCqCSr2cEzRAeHUy?cluster=devnet) |
 
 ## Architecture
 
@@ -156,7 +158,7 @@ Production runs at [setloop.vercel.app](https://setloop.vercel.app/) from `main`
 
 To host your own copy, connect a **private Vercel Blob store** to your project and deploy after the connection is configured. The function supports the store ID with Vercel runtime identity or a project-scoped `BLOB_READ_WRITE_TOKEN`. Keep credentials in the deployment environment.
 
-## Experimental Solana and MagicBlock
+## Solana and MagicBlock
 
 The [Anchor program](chain/src/lib.rs) models stamp credits in a room account. It prepares permissions before writing offers into the private rollup, checks the full cycle at settlement, clears offers, and publishes a round summary. The settlement coordinator is a separate trusted role with access to the offers.
 
@@ -180,6 +182,18 @@ npm run verify -- YOUR_SOLANA_ROUND_ADDRESS
 
 A complete devnet check requires three wallets, own-offer access, denied cross-seat reads, a commitment signature, and a base-layer receipt with the expected album counts. The no-match run sends three valid but incompatible offers and checks that every album keeps its original counts. To test from the web app locally, set `SETLOOP_CHAIN_KEYPAIR` before starting Node. Keep keypair files outside the repository. [MagicBlock examples](https://github.com/magicblock-labs/magicblock-examples)
 
+The [evidence page](https://setloop.vercel.app/blitz) shows both private runs. The normal web rooms still use the Setloop server ledger. For a matching-only test on the public Asia rollup, set `SETLOOP_PER_VALIDATOR` to `MAS1Dt9qreoRMQ14YQuhg8UTZMMzDdKhmkZMECCzk57` and add `--public-er` to the demo command. Use synthetic offers because the public rollup can expose offer data.
+
+### Wallet-owned completion badges
+
+The demo can reuse three devnet test wallets via `SETLOOP_DEMO_KEY_DIR`, containing `seat-1.keypair.json` through `seat-3.keypair.json`. The coordinator can issue one transferable completion badge to each wallet after a confirmed match:
+
+```sh
+npm run award -- /absolute/path/to/devnet-keypair.json COMMITTED_ROOM_ADDRESS
+```
+
+Issuance creates one three-edition SPL mint per coordinator and round, credits the three wallets in one transaction, and removes mint authority. The onchain receipt and issuance transaction make the award independently checkable. Badges live in the players’ wallets between rounds. Stamp balances used for each swap are scoped to that room. The award is coordinator-issued on devnet.
+
 ## Project structure
 
 ```text
@@ -192,6 +206,7 @@ setloop/
 │   ├── Cargo.toml / Cargo.lock
 │   ├── package.json / package-lock.json
 │   ├── bridge.mjs                Node-to-devnet adapter
+│   ├── award.mjs                 Fixed-supply devnet completion badges
 │   ├── client.mjs                Program and private rollup client
 │   ├── demo.mjs                  Devnet smoke test
 │   ├── verify.mjs                Devnet receipt CLI

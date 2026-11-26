@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Keypair, SystemProgram } from '@solana/web3.js';
 import { RoomError, STAMPS } from '../src/room.mjs';
-import { PROGRAM, assertDevnet, base, commitmentSignature, decodeRoom, privateConnection, roomInstructions, send } from './client.mjs';
+import { PROGRAM, assertDevnet, base, decodeRoom, findCommitmentSignature, privateConnection, roomInstructions, send } from './client.mjs';
 
 const DELEGATION_ID = 'DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh';
 const SEAT_FUNDING = 25_000_000;
@@ -79,7 +79,6 @@ export async function makeBridge(keyPath) {
   async function close(room,early) {
     const {host,plan} = roomAccounts(room);
     let chainRoom = await base.getAccountInfo(plan.room);
-    let signature;
     if (!chainRoom?.owner.equals(PROGRAM) || !decodeRoom(chainRoom.data).result) {
       const connection = await privateConnection(operator);
       const snapshot = decodeRoom((await observe(()=>connection.getAccountInfo(plan.room),value=>value?.owner.equals(PROGRAM))).data);
@@ -87,11 +86,11 @@ export async function makeBridge(keyPath) {
         if (early && !snapshot.earlyClose) await send(await privateConnection(host),host,[plan.closeEarly]);
         await send(connection,operator,[plan.settle]);
       }
-      const published = await send(connection,operator,[plan.publish]);
-      signature = await commitmentSignature(connection,published).catch(()=>undefined);
+      await send(connection,operator,[plan.publish]);
       chainRoom = await observe(()=>base.getAccountInfo(plan.room),value=>value?.owner.equals(PROGRAM) && decodeRoom(value.data).result !== 0);
     }
     const result = decodeRoom(chainRoom.data);
+    const signature = await observe(() => findCommitmentSignature(plan.room), Boolean);
     const transfers = result.transfers.map(({from,to,stamp})=>({from:result.seats.indexOf(from),to:result.seats.indexOf(to),stamp:stamp.toLowerCase()}));
     return {transfers,closedAt:result.closedAt*1000,address:plan.room.toBase58(),program:PROGRAM.toBase58(),signature};
   }

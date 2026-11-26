@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, sendAndConfirmTransaction } from '@solana/web3.js';
-import { getAuthToken, GetCommitmentSignature, permissionPdaFromAccount, verifyTeeRpcIntegrity } from '@magicblock-labs/ephemeral-rollups-sdk';
+import { getAuthToken, permissionPdaFromAccount, verifyTeeRpcIntegrity } from '@magicblock-labs/ephemeral-rollups-sdk';
 import nacl from 'tweetnacl';
 
 export const PROGRAM = new PublicKey(process.env.SETLOOP_PROGRAM_ID || 'GHWCZYzCsEEiYvdCVQ5o9aYyserYiJ3TX2tqb6hS3di9');
@@ -73,8 +73,29 @@ export function roomInstructions(host, seats, settler, nonce, duration, choiceRo
   };
 }
 
-export async function commitmentSignature(connection, signature) {
-  return GetCommitmentSignature(signature,connection);
+export async function findCommitmentSignature(room) {
+  const signatures = await base.getSignaturesForAddress(room,{limit:5},'confirmed');
+  for (const {signature,err} of signatures) {
+    if (err) continue;
+    // MagicBlock's base-layer commit can use transaction version 1. Read parsed RPC
+    // data directly because the legacy web3 client only models versions legacy and 0.
+    const response = await fetch(base.rpcEndpoint,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getTransaction',params:[signature,{
+        encoding:'jsonParsed',commitment:'confirmed',maxSupportedTransactionVersion:1,
+      }]}),
+      signal:AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) continue;
+    const {result} = await response.json();
+    const keys = result?.transaction?.message?.accountKeys;
+    const logs = result?.meta?.logMessages;
+    if (result?.meta?.err === null && keys?.some(key => key.pubkey === room.toBase58())
+      && logs?.includes(`Program ${DELEGATION.toBase58()} success`)
+      && logs.includes('Program log: Instruction: ProcessUndelegation')
+      && logs.includes(`Program ${PROGRAM.toBase58()} success`)) return signature;
+  }
+  return null;
 }
 
 export function decodeRoom(data) {
