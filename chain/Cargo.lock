@@ -144,9 +144,9 @@ dependencies = [
 
 [[package]]
 name = "anchor-lang"
-version = "1.0.2"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bac4de7c9a9a69180798af701e22302cc0ebf2ef683b843706a1b7809454735"
+checksum = "ce734f46dca7bc34c93f206871293d0bebaa89184d92231e1cd7a3c532993585"
 dependencies = [
  "anchor-attribute-access-control",
  "anchor-attribute-account",
@@ -157,12 +157,14 @@ dependencies = [
  "anchor-derive-accounts",
  "anchor-derive-serde",
  "anchor-derive-space",
+ "anchor-lang-error",
  "anchor-lang-idl",
  "base64 0.21.7",
  "bincode",
  "borsh 1.8.1",
  "bytemuck",
  "const-crypto",
+ "serde",
  "solana-account-info 3.2.0",
  "solana-clock 3.2.1",
  "solana-cpi 3.1.0",
@@ -181,10 +183,23 @@ dependencies = [
  "solana-pubkey 3.0.0",
  "solana-sdk-ids 3.1.0",
  "solana-stake-interface 2.0.2",
- "solana-system-interface 2.0.0",
+ "solana-system-interface 3.3.0",
  "solana-sysvar 3.1.1",
  "solana-sysvar-id 3.1.0",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "anchor-lang-error"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "912c2bce8889b8e46cf0b8a031736e1f8fc526ea8cf68bede947783bc7d0ba3f"
+dependencies = [
+ "anchor-attribute-error",
+ "borsh 1.8.1",
+ "solana-msg 3.1.0",
+ "solana-program-error 3.0.1",
+ "solana-pubkey 3.0.0",
 ]
 
 [[package]]

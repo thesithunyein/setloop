@@ -1,4 +1,5 @@
 pub const STARTERS: [[u8; 3]; 3] = [[2, 1, 0], [0, 2, 1], [1, 0, 2]];
+pub const CHOICE_STARTERS: [[u8; 3]; 3] = [[2, 2, 0], [0, 2, 2], [2, 0, 2]];
 
 pub fn valid_offer(inventory: &[u8; 3], give: u8, need: u8) -> bool {
     inventory.get(give as usize).is_some_and(|count| *count > 1)
@@ -71,5 +72,20 @@ mod tests {
         let mut inventory = STARTERS;
         inventory[1][1] = 1;
         assert_eq!(compute_settlement(inventory, OFFERS), Err(InvalidOffer));
+    }
+
+    #[test]
+    fn choice_round_can_match_in_both_directions() {
+        let reverse = [(true, 1, 2), (true, 2, 0), (true, 0, 1)];
+        for offers in [OFFERS, reverse] {
+            let (inventories, _, _) = compute_settlement(CHOICE_STARTERS, offers).unwrap().unwrap();
+            assert!(inventories.iter().all(|album| album.contains(&2) && !album.contains(&0)));
+        }
+    }
+
+    #[test]
+    fn three_valid_but_incompatible_offers_do_not_settle() {
+        let offers = [(true, 1, 2), (true, 1, 0), (true, 2, 1)];
+        assert_eq!(compute_settlement(CHOICE_STARTERS, offers), Ok(None));
     }
 }

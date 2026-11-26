@@ -71,6 +71,24 @@ test('a stale inventory rejects the entire cycle before any inventory changes', 
   assert.equal(room.receipt.result,'no-match');
 });
 
+test('a Choice round can close without a match even when every offer is valid', async t => {
+  const {call} = await setup(t);
+  const first = await call('/rooms',{post:true,body:{variant:'choice'}});
+  const path = `/rooms/${first.room.code}`;
+  const second = await call(`${path}/join`,{post:true,body:{nickname:'Ben'}});
+  const third = await call(`${path}/join`,{post:true,body:{nickname:'Cara'}});
+  assert.equal(third.room.variant,'choice');
+  const offers = [{give:'moon',need:'star'},OFFER[1],OFFER[2]];
+  for (const [i,seat] of [first,second,third].entries()) {
+    assert.equal((await call(`${path}/offer`,{post:true,token:seat.token,body:offers[i]})).status,200);
+  }
+  assert.equal((await call(path)).room.ready,3);
+  const closed = await call(`${path}/close`,{post:true,token:first.token});
+  assert.equal(closed.room.receipt.result,'no-match');
+  assert.deepEqual(closed.room.receipt.transfers,[]);
+  assert(closed.room.receipt.players.every(player=>player.before.every((amount,index)=>amount===player.after[index])));
+});
+
 test('chain-mode rooms only expose a settled receipt after the chain bridge confirms', async t => {
   const events = [];
   let release;

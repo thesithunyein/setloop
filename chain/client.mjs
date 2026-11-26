@@ -47,7 +47,7 @@ export async function send(connection, payer, instructions, otherSigners = []) {
   return sendAndConfirmTransaction(connection,tx,[payer,...otherSigners],{commitment:'confirmed',preflightCommitment:'confirmed'});
 }
 
-export function roomInstructions(host, seats, settler, nonce, duration) {
+export function roomInstructions(host, seats, settler, nonce, duration, choiceRound = false) {
   const nonceBytes = number(nonce, 8);
   const room = pda(PROGRAM,Buffer.from('room'),host.toBuffer(),nonceBytes);
   const offers = seats.map((_,i) => pda(PROGRAM,Buffer.from('offer'),room.toBuffer(),byte(i)));
@@ -61,7 +61,7 @@ export function roomInstructions(host, seats, settler, nonce, duration) {
   ];
   return {
     room, offers,
-    create: ix('create_room',[signed(host),writable(room),meta(SystemProgram.programId)],nonceBytes,...seats.map(seat=>seat.toBuffer()),settler.toBuffer(),number(duration,2)),
+    create: ix('create_room',[signed(host),writable(room),meta(SystemProgram.programId)],nonceBytes,...seats.map(seat=>seat.toBuffer()),settler.toBuffer(),number(duration,2),byte(Number(choiceRound))),
     createOffer: i => ix('create_offer',[signed(host),meta(seats[i],false,true),meta(room),writable(offers[i]),meta(SystemProgram.programId)],byte(i)),
     delegateRoom: ix('delegate_room',[signed(host),...delegationPrefix(room)],nonceBytes),
     delegateOffer: i => ix('delegate_offer',[signed(seats[i]),meta(room),...delegationPrefix(offers[i])],byte(i)),

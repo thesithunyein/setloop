@@ -43,11 +43,13 @@ async function payload(request) {
 async function createRoom(store, input, demo, now, chain) {
   const duration = demo ? 3 : Number(input.duration || 3);
   if (![1, 3, 5].includes(duration)) throw new RoomError('Choose a one, three or five minute round.');
+  const variant = input.variant ?? 'classic';
+  if (!['classic', 'choice'].includes(variant)) throw new RoomError('Choose a Classic or Choice round.');
   const tokens = demo ? [secret(), secret(), secret()] : [secret()];
   const hashes = await Promise.all(tokens.map(digest));
   for (let attempt = 0; attempt < 8; attempt++) {
     const code = roomCode();
-    const room = {code, name: demo ? 'Demo room' : label(input.name, 40), duration, demo, status: 'waiting', deadline: null, players: [], receipt: null};
+    const room = {code, name: demo ? 'Demo room' : label(input.name, 40), duration, variant, demo, status: 'waiting', deadline: null, players: [], receipt: null};
     hashes.forEach(hash => addPlayer(room, label(input.nickname, 24), hash, now, demo));
     if (!await store.create(room, now)) continue;
     if (chain && room.status === 'open') {

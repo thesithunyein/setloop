@@ -18,14 +18,14 @@ const ROOM: &[u8] = b"room";
 const OFFER: &[u8] = b"offer";
 const PERMISSIONS: u8 = TX_BALANCES_FLAG | TX_LOGS_FLAG | TX_MESSAGE_FLAG;
 mod matching;
-use matching::{compute_settlement, valid_offer, STARTERS};
+use matching::{compute_settlement, valid_offer, CHOICE_STARTERS, STARTERS};
 
 #[ephemeral]
 #[program]
 pub mod setloop {
     use super::*;
 
-    pub fn create_room(ctx: Context<CreateRoom>, nonce: u64, seats: [Pubkey; 3], settler: Pubkey, duration: u16) -> Result<()> {
+    pub fn create_room(ctx: Context<CreateRoom>, nonce: u64, seats: [Pubkey; 3], settler: Pubkey, duration: u16, choice_round: bool) -> Result<()> {
         require!([60, 180, 300].contains(&duration), SetloopError::Duration);
         require!(seats[0] == ctx.accounts.host.key() && seats.iter().all(|seat| *seat != Pubkey::default()), SetloopError::Seat);
         require!(seats[0] != seats[1] && seats[1] != seats[2] && seats[2] != seats[0], SetloopError::Seat);
@@ -36,7 +36,7 @@ pub mod setloop {
         room.seats = seats;
         room.settler = settler;
         room.duration = duration;
-        room.inventories = STARTERS;
+        room.inventories = if choice_round { CHOICE_STARTERS } else { STARTERS };
         Ok(())
     }
 

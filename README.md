@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://setloop.vercel.app/"><img alt="Live app" src="https://img.shields.io/badge/Setloop-Live%20app-cf1124?style=flat-square&amp;logo=vercel&amp;logoColor=white"></a>
-  <a href="https://setloop.vercel.app/practice"><img alt="Solo practice" src="https://img.shields.io/badge/Play-Solo%20practice-211b20?style=flat-square"></a>
+  <a href="https://setloop.vercel.app/practice?round=choice"><img alt="Solo practice" src="https://img.shields.io/badge/Play-Solo%20practice-211b20?style=flat-square"></a>
   <a href="https://setloop.vercel.app/docs"><img alt="User guide" src="https://img.shields.io/badge/Read-User%20guide-cf1124?style=flat-square"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-211b20?style=flat-square"></a>
 </p>
@@ -17,7 +17,7 @@
 
 | Start here | What you can verify |
 | --- | --- |
-| [Practice solo](https://setloop.vercel.app/practice) | Make all three offers to complete the albums. Leave one offer out and no stamps move. |
+| [Practice a Choice round](https://setloop.vercel.app/practice?round=choice) | Pick one of two valid offers for each collector. A round can close without a match even when all three offers were saved. |
 | [Play with two friends](https://setloop.vercel.app/) | Create a room, share its code, and save one private offer per player. |
 | [Open a verified production receipt](https://setloop.vercel.app/receipt/A4T4S3) | See three completed transfers and the browser's check of the receipt and album totals. |
 | [Read the user guide](https://setloop.vercel.app/docs) | Read the steps for hosting, joining, sharing links, and troubleshooting. |
@@ -34,10 +34,12 @@ The stamps are digital game pieces. You can play in a browser without signing up
 
 ## How it works
 
-1. **Start a room.** Choose a one-, three-, or five-minute round and share the invite link. The countdown starts when the third player joins.
+1. **Start a room.** Choose a duration and round type, then share the invite link. The countdown starts when the third player joins.
 2. **Save a private offer.** Choose one extra stamp to give and one missing stamp to receive. Other collectors see only whether your offer is ready. You can change it until the round ends.
 3. **Finish together.** The timer can run out, or the host can finish early after all three offers are ready. A match moves all three stamps together.
 4. **Check the result.** An online round has a public receipt. It records each transfer or shows that no stamps moved.
+
+Classic rounds start with one possible offer per collector. Choice rounds start with two different duplicates per collector. Changing a single offer can break a match even when everyone is ready.
 
 | Collector | Gives | Gets |
 | --- | --- | --- |
@@ -172,10 +174,11 @@ Deploy to **Solana devnet** using a funded devnet-only wallet and a program keyp
 
 ```sh
 npm run demo -- /absolute/path/to/devnet-keypair.json
+npm run demo -- /absolute/path/to/devnet-keypair.json --no-match
 npm run verify -- YOUR_SOLANA_ROUND_ADDRESS
 ```
 
-A complete devnet check requires a three-wallet swap, a cross-seat offer privacy check, a commitment signature, and a base-layer receipt with the expected album counts. To test from the web app locally, set `SETLOOP_CHAIN_KEYPAIR` before starting Node. Keep keypair files outside the repository. [MagicBlock examples](https://github.com/magicblock-labs/magicblock-examples)
+A complete devnet check requires three wallets, own-offer access, denied cross-seat reads, a commitment signature, and a base-layer receipt with the expected album counts. The no-match run sends three valid but incompatible offers and checks that every album keeps its original counts. To test from the web app locally, set `SETLOOP_CHAIN_KEYPAIR` before starting Node. Keep keypair files outside the repository. [MagicBlock examples](https://github.com/magicblock-labs/magicblock-examples)
 
 ## Project structure
 
@@ -203,6 +206,7 @@ setloop/
 │   ├── app.js                    Landing, room, practice, receipt, and guide UI
 │   ├── styles.css                Styles and illustrations
 │   ├── setloop-logo.png           Current logo and favicon
+│   ├── blitz-evidence.json        Published devnet proof links
 │   ├── favicon.svg / lettermark.svg / logo.svg
 │   └── google-sans.woff2 / Google-Sans-OFL.txt
 ├── src/

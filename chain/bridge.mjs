@@ -35,7 +35,7 @@ export async function makeBridge(keyPath) {
     const derive = label => createHmac('sha256',operator.secretKey).update(`setloop:v1:${room.code}:${label}`).digest();
     const seats = [0,1,2].map(i=>Keypair.fromSeed(derive(`seat:${i}`)));
     const host = seats[0];
-    const plan = roomInstructions(host.publicKey,seats.map(seat=>seat.publicKey),operator.publicKey,derive('nonce').readBigUInt64LE(),room.duration*60);
+    const plan = roomInstructions(host.publicKey,seats.map(seat=>seat.publicKey),operator.publicKey,derive('nonce').readBigUInt64LE(),room.duration*60,room.variant === 'choice');
     return {seats,host,plan};
   }
 

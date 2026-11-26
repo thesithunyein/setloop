@@ -19,7 +19,7 @@ custom-panic = []
 anchor-debug = []
 
 [dependencies]
-anchor-lang = "=1.0.2"
+anchor-lang = "=1.2.2"
 ephemeral-rollups-sdk = { version = "=0.16.2", features = ["anchor", "access-control"] }
 
 [profile.release]

@@ -1,4 +1,4 @@
-import { RoomError } from './room.mjs';
+import { RoomError, startingInventory } from './room.mjs';
 
 const PROGRAM = 'GHWCZYzCsEEiYvdCVQ5o9aYyserYiJ3TX2tqb6hS3di9';
 const ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -27,11 +27,23 @@ export async function readDevnetReceipt(address, rpc = globalThis.fetch) {
   const inventories = [198,201,204].map(start=>Array.from(data.subarray(start,start+3)));
   const donors = Array.from(data.subarray(207,210));
   const given = Array.from(data.subarray(210,213));
-  if (resultFlag === 1 && (new Set(donors).size !== 3 || donors.some((donor,recipient)=>donor>2||donor===recipient) || given.some(index=>index>2) || inventories.some(inventory=>inventory.some(amount=>amount!==1)))) {
+  if (resultFlag === 1 && (new Set(donors).size !== 3 || donors.some((donor,recipient)=>donor>2||donor===recipient) || given.some(index=>index>2) || inventories.some(inventory=>inventory.includes(0)))) {
+    throw new RoomError('The committed room contains an inconsistent trade.',409);
+  }
+  const before = inventories.map(inventory => [...inventory]);
+  if (resultFlag === 1) {
+    for (const [recipient,donor] of donors.entries()) {
+      before[donor][given[donor]]++;
+      before[recipient][given[donor]]--;
+    }
+  }
+  const variant = ['classic','choice'].find(format => before.every((inventory,slot) =>
+    startingInventory(slot,format).every((amount,index) => inventory[index] === amount)));
+  if (!variant || new Set(seats).size !== 3 || seats.includes('11111111111111111111111111111111')) {
     throw new RoomError('The committed room contains an inconsistent trade.',409);
   }
   const transfers = resultFlag === 1 ? donors.map((donor,recipient)=>({from:seats[donor],to:seats[recipient],stamp:STAMPS[given[donor]]})) : [];
-  return {address,program:PROGRAM,closedAt:Number(view.getBigInt64(190,true))*1000,transfers,inventories,result:resultFlag===1?'matched':'no-match'};
+  return {address,program:PROGRAM,closedAt:Number(view.getBigInt64(190,true))*1000,transfers,inventories,before,seats,variant,result:resultFlag===1?'matched':'no-match'};
 }
 
 function base58(bytes) {

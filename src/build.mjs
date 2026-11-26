@@ -3,9 +3,9 @@ import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 const root = new URL('../',import.meta.url);
 const bundle = new URL('dist/server/',root);
 await mkdir(bundle,{recursive:true});
-const types = {html:'text/html',js:'text/javascript',css:'text/css',svg:'image/svg+xml',txt:'text/plain'};
+const types = {html:'text/html',js:'text/javascript',css:'text/css',svg:'image/svg+xml',txt:'text/plain',json:'application/json'};
 const assets = {};
-for (const path of ['index.html','app.js','styles.css','logo.svg','favicon.svg','lettermark.svg','Google-Sans-OFL.txt']) {
+for (const path of ['index.html','app.js','styles.css','logo.svg','favicon.svg','lettermark.svg','Google-Sans-OFL.txt','blitz-evidence.json']) {
   assets[`/${path}`] = [await readFile(new URL(`public/${path}`,root),'utf8'),types[path.split('.').pop()]];
 }
 assets['/room-rules.mjs'] = [await readFile(new URL('src/room.mjs',root),'utf8'),'text/javascript'];

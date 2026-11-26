@@ -9,6 +9,7 @@ import { roomStore, SCHEMA } from './store.mjs';
 const contentTypes = new Map([
   ['/app.js', 'text/javascript'], ['/styles.css', 'text/css'], ['/favicon.svg', 'image/svg+xml'],
   ['/room-rules.mjs', 'text/javascript'],
+  ['/blitz-evidence.json', 'application/json'],
   ['/setloop-logo.png', 'image/png'],
   ['/logo.svg', 'image/svg+xml'], ['/lettermark.svg', 'image/svg+xml'],
   ['/google-sans.woff2','font/woff2'], ['/Google-Sans-OFL.txt','text/plain'],

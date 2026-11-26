@@ -1,6 +1,11 @@
 export const STAMPS = ['sun', 'moon', 'star'];
 const STARTERS = [[2, 1, 0], [0, 2, 1], [1, 0, 2]];
+const CHOICE_STARTERS = [[2, 2, 0], [0, 2, 2], [2, 0, 2]];
 const DEMO_NAMES = ['Alice', 'Ben', 'Cara'];
+
+export function startingInventory(slot, variant) {
+  return [...(variant === 'choice' ? CHOICE_STARTERS : STARTERS)[slot]];
+}
 
 export class RoomError extends Error {
   constructor(message, status = 400) {
@@ -16,7 +21,7 @@ export function addPlayer(room, nickname, tokenHash, now, demo = false) {
   const slot = room.players.length;
   const player = {
     slot, tokenHash, name: demo ? DEMO_NAMES[slot] : nickname || `Player ${slot + 1}`,
-    inventory: [...STARTERS[slot]], offer: null,
+    inventory: startingInventory(slot, room.variant), offer: null,
   };
   room.players.push(player);
   if (room.players.length === 3) {
@@ -77,7 +82,7 @@ export function settleRoom(room, now, proof = null) {
 
 export function roomView(room, player, now) {
   return {
-    code: room.code, name: room.name, status: room.status, duration: room.duration,
+    code: room.code, name: room.name, status: room.status, duration: room.duration, variant: room.variant || 'classic',
     deadline: room.deadline, time: now, ready: room.players.filter(member => member.offer).length,
     demo: room.demo, players: room.players.map(({slot, name, offer}) => ({slot, name, ready: !!offer})),
     self: player ? {slot: player.slot, name: player.name, inventory: player.inventory, offer: player.offer} : null,

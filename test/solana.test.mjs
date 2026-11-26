@@ -26,4 +26,11 @@ test('the devnet verifier checks owner, account discriminator and settled balanc
   await assert.rejects(readDevnetReceipt(room,rpc('11111111111111111111111111111111')), /No committed/);
   account[199]=2;
   await assert.rejects(readDevnetReceipt(room,rpc()), /inconsistent trade/);
+  Buffer.from([1,2,1, 1,1,2, 2,1,1]).copy(account,198);
+  const choice = await readDevnetReceipt(room,rpc());
+  assert.equal(choice.variant,'choice');
+  assert.deepEqual(choice.before,[[2,2,0],[0,2,2],[2,0,2]]);
+  account[189]=2;
+  Buffer.from(choice.before.flat()).copy(account,198);
+  assert.deepEqual((await readDevnetReceipt(room,rpc())).transfers,[]);
 });

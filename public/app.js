@@ -109,6 +109,8 @@ function createDialog() {
     <label>Room name <span class="helper">(optional)</span><input name="name" maxlength="40" placeholder="Sunday stamp club" autocomplete="off"></label>
     <label>Your nickname <span class="helper">(optional)</span><input name="nickname" maxlength="24" autocomplete="nickname" placeholder="Player 1"></label>
     <label>Round duration<select name="duration"><option value="1">1 minute</option><option value="3" selected>3 minutes</option><option value="5">5 minutes</option></select></label>
+    <label>Round type<select name="variant" aria-describedby="round-type-help"><option value="classic">Classic · one possible offer</option><option value="choice">Choice · two ways to offer</option></select></label>
+    <p class="helper" id="round-type-help">In a Choice round, each person picks which duplicate to give. Everyone can submit an offer and the round can still end without a match.</p>
     <p class="helper">The clock starts when the third collector joins.</p><p class="form-error" role="alert"></p><button class="button accent wide">Create room</button></form>`);
 }
 
@@ -264,7 +266,7 @@ function renderRoom(room) {
   }
   const players = Array.from({length:3}, (_, i) => room.players[i]);
   main.innerHTML = `<div class="view"><header class="room-head"><div><p class="eyebrow">Swap room</p><h1>${escape(room.name || 'Stamp swap')}</h1><p class="muted">Room <strong class="mono">${room.code}</strong> · ${room.duration} ${room.duration === 1 ? 'minute' : 'minutes'}</p></div>
-    <div class="actions">${RoomTimer(room)}<button class="button outline compact" data-action="copy-room">Copy invite link</button></div></header>
+    <div class="actions">${room.variant === 'choice' ? '<span class="pill">Choice round</span>' : ''}${RoomTimer(room)}<button class="button outline compact" data-action="copy-room">Copy invite link</button></div></header>
     ${room.self && !room.demo ? `<div class="room-access"><span>${room.status === 'waiting' ? 'Send the invite link or room code to your friends.' : `You’re playing as <strong>${escape(room.self.name)}</strong>.`}</span><button class="button outline compact" data-action="copy-seat">${lock} Copy my private link</button><a class="text-link" href="/docs#privacy">Which link should I share?</a></div>` : ''}
     ${demoPanel(room)}
     ${room.self ? `<div class="room-grid">${StampAlbum(room.self.inventory, 'Your album')}${OfferSelector(room)}</div>` : `<section class="panel single-column"><h2>Join this room</h2><p class="helper">Room ${room.code} has ${3 - room.players.length} open ${room.players.length === 2 ? 'seat' : 'seats'}.</p>${room.status === 'waiting' ? '<form class="form-stack" data-form="join"><label>Your nickname <span class="helper">(optional)</span><input name="nickname" maxlength="24" placeholder="Choose a nickname" autocomplete="nickname"></label><p class="form-error" role="alert"></p><button class="button accent">Join this room</button></form>' : '<p>This room is full. If you have a demo seat link, open it in this browser.</p>'}</section>`}
@@ -299,12 +301,13 @@ function MatchAnimation(receipt) {
 
 function renderResult(receipt, practice = false) {
   const match = receipt.result === 'matched';
+  const practicePath = location.search === '?round=choice' ? '/practice?round=choice' : '/practice';
   main.innerHTML = `<div class="view"><section class="result panel ${receipt.result}"><p class="eyebrow">${practice ? 'Practice swap' : `Room ${receipt.code} · Round ended`}</p>
     <span class="pill ${match ? 'success' : 'warning'}">${match ? '✓ Match found' : 'No match'}</span><h2>${match ? 'All three sets completed.' : 'Everyone keeps their pieces.'}</h2>
     <p class="muted">${match ? 'Three collectors finished their albums in one trade.' : 'The round ended without a match for all three collectors.'}</p><div class="results-grid">${receipt.players.map(player => {
       const transfer = receipt.transfers.find(item => item.to === player.slot);
       return StampAlbum(player.after, player.name, {small:true,slot:player.slot,received:transfer?.stamp});
-    }).join('')}</div><div class="actions">${practice ? '<a class="button accent" href="/practice">Practice again</a><a class="button outline" href="/docs#play">Read how to play with friends</a>' : `<a class="button accent" href="/receipt/${receipt.code}">View public receipt ↗</a><button class="button outline" data-action="create">Start another room</button>`}</div>
+    }).join('')}</div><div class="actions">${practice ? `<a class="button accent" href="${practicePath}">Practice again</a><a class="button outline" href="/docs#play">Read how to play with friends</a>` : `<a class="button accent" href="/receipt/${receipt.code}">View public receipt ↗</a><button class="button outline" data-action="create">Start another room</button>`}</div>
     ${practice ? '<p class="helper practice-note">This round used sample stamps in this tab. It did not create a saved album or a public receipt.</p>' : ''}</section></div>`;
   const heading = main.querySelector('.result h2');
   heading.tabIndex = -1;
@@ -314,30 +317,34 @@ function renderResult(receipt, practice = false) {
 
 async function renderPractice() {
   const {addPlayer, STAMPS, putOffer, settleRoom} = await import('/room-rules.mjs');
-  const room = {status:'waiting', duration:3, players:[]};
+  const choice = new URLSearchParams(location.search).get('round') === 'choice';
+  const room = {status:'waiting', duration:3, variant:choice ? 'choice' : 'classic', players:[]};
   const now = Date.now();
   demoNames.forEach(() => addPlayer(room, '', null, now, true));
 
   main.innerHTML = `<div class="view">
-    <div class="page-heading"><p class="eyebrow">One-player practice</p><h1>Practice a swap</h1><p class="muted">Play all three collectors in this tab. Choose who makes an offer, then see what happens to their albums.</p></div>
+    <div class="page-heading"><p class="eyebrow">One-player practice</p><h1>${choice ? 'Practice a Choice round' : 'Practice a swap'}</h1><p class="muted">${choice ? 'Each collector can give away either of two duplicates. Pick their offers and see if all three albums can be completed.' : 'Play all three collectors in this tab. Choose who makes an offer, then see what happens to their albums.'}</p>
+      <a class="text-link" href="${choice ? '/practice' : '/practice?round=choice'}">${choice ? 'Try a Classic round' : 'Try a Choice round'} ↗</a></div>
     <form class="practice" id="practice-round">
       <div class="practice-grid">${room.players.map(player => {
-        const give = STAMPS[player.inventory.findIndex(total => total > 1)];
+        const available = STAMPS.filter((_,index) => player.inventory[index] > 1);
         const need = STAMPS[player.inventory.indexOf(0)];
         return `<div class="practice-card">
           ${StampAlbum(player.inventory, player.name, {small:true,slot:player.slot})}
-          <label class="practice-choice"><input type="checkbox" name="offer" value="${player.slot}"><span><strong>Make ${player.name}’s offer</strong><small>Give ${capitalize(give)} · Get ${capitalize(need)}</small></span></label>
+          ${choice ? `<label class="practice-select">${player.name} wants ${capitalize(need)}
+            <select name="give-${player.slot}"><option value="">Skip offer</option>${available.map(stamp => `<option value="${stamp}">Offer ${capitalize(stamp)}</option>`).join('')}</select></label>`
+            : `<label class="practice-choice"><input type="checkbox" name="give-${player.slot}" value="${available[0]}"><span><strong>Make ${player.name}’s offer</strong><small>Give ${capitalize(available[0])} · Get ${capitalize(need)}</small></span></label>`}
         </div>`;
       }).join('')}</div>
-      <div class="practice-controls"><div><strong>Can you complete all three albums?</strong><p class="muted">Try making all three offers, or leave one unchecked to see a round without a match.</p></div><button class="button accent" type="submit">See what happens</button></div>
+      <div class="practice-controls"><div><strong>Can you complete all three albums?</strong><p class="muted">${choice ? 'Try choosing an offer for each player. Then change one and see what happens to the match.' : 'Try making all three offers, or leave one unchecked to see a round without a match.'}</p></div><button class="button accent" type="submit">See what happens</button></div>
     </form></div>`;
 
   main.querySelector('#practice-round').addEventListener('submit', event => {
     event.preventDefault();
-    const offers = new FormData(event.currentTarget).getAll('offer');
-    for (const slot of offers) {
-      const player = room.players[Number(slot)];
-      putOffer(room, player, STAMPS[player.inventory.findIndex(total => total > 1)], STAMPS[player.inventory.indexOf(0)]);
+    const offers = new FormData(event.currentTarget);
+    for (const player of room.players) {
+      const give = offers.get(`give-${player.slot}`);
+      if (give) putOffer(room, player, give, STAMPS[player.inventory.indexOf(0)]);
     }
     settleRoom(room, Date.now());
     renderResult(room.receipt, true);
@@ -380,11 +387,38 @@ function renderVerify() {
     <details class="verify-advanced panel"><summary>Look up a Solana test-network receipt</summary><p class="helper">Use this if Setloop gave you a Solana round address.</p><form class="form-stack" data-form="devnet-receipt"><label>Solana round address<input type="text" name="code" autocomplete="off" maxlength="44" minlength="32" spellcheck="false" required></label><p class="form-error" role="alert"></p><button class="button outline">Look up test receipt</button></form></details></div>`;
 }
 
+async function renderBlitz() {
+  const published = await fetch('/blitz-evidence.json').then(response => response.ok ? response.json() : null).catch(() => null);
+  const rounds = Array.isArray(published?.rounds) ? published.rounds : [];
+  main.innerHTML = `<div class="view">
+    <header class="page-heading"><p class="eyebrow">MagicBlock Blitz v10</p><h1>Setloop demo and proof</h1>
+      <p class="muted">Three collectors make private offers. When the offers form a cycle, all three albums fill together.</p>
+      <div class="actions"><a class="button accent" href="/practice?round=choice">Play a Choice round</a><a class="button outline" href="/">Start a web room</a><a class="text-link" href="https://github.com/thesithunyein/setloop">Source on GitHub ↗</a></div></header>
+    <section class="panel"><h2>MagicBlock devnet evidence</h2>
+      ${rounds.length ? `<p>These proof rounds used three devnet player wallets and MagicBlock’s Private Ephemeral Rollup. The public receipt reads the room account from Solana. The everyday web rooms use Setloop’s server ledger.</p>
+        <div class="collection-list">${rounds.map(round => `<article class="panel">
+          <h3>${round.result === 'matched' ? 'Matched round · three albums completed' : 'No match · all albums unchanged'}</h3>
+          <p class="mono small">${escape(round.address)}</p>
+          <div class="actions"><a class="button outline compact" href="/devnet/${encodeURIComponent(round.address)}">Read committed receipt</a>
+          <a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/tx/${encodeURIComponent(round.signature)}?cluster=devnet">Commitment transaction ↗</a>
+          ${round.delegation ? `<a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/tx/${encodeURIComponent(round.delegation)}?cluster=devnet">Room delegation ↗</a>` : ''}</div></article>`).join('')}</div>`
+      : '<p>Devnet deployment evidence is pending. A live server-ledger swap is available below.</p>'}
+    </section>
+    <section class="panel participants"><h2>Try the product</h2><p>In Choice rounds, every player has two valid duplicates they can give. Make offers for all three players, then change one offer to see when a swap fails.</p>
+    <div class="actions"><a class="button outline" href="/practice?round=choice">Practice both outcomes</a><a class="text-link" href="/receipt/A4T4S3">See a live web receipt ↗</a></div></section></div>`;
+}
+
 async function renderDevnetReceipt(address) {
   const receipt = await api(`/devnet/${address}`,{bearer:''});
   const matched = receipt.result === 'matched';
   const short = value => `${value.slice(0,5)}…${value.slice(-4)}`;
-  main.innerHTML = `<div class="view single-column"><div class="page-heading"><p class="eyebrow">Solana devnet</p><h1>Swap receipt</h1><p class="muted">Read from the committed Setloop program account.</p></div><article class="panel"><p><span class="pill ${matched ? 'success' : 'warning'}">${matched ? '✓ Matched' : 'No match'}</span></p><p class="mono small">${escape(receipt.address)}</p><p class="helper">${escape(new Date(receipt.closedAt).toLocaleString())}</p>${matched ? `<ul class="receipt-list">${receipt.transfers.map(({from,to,stamp:piece}) => `<li>${stamp(piece.toLowerCase())}<span><strong>${escape(short(from))}</strong> sent ${escape(piece)} to <strong>${escape(short(to))}</strong>.</span></li>`).join('')}</ul>` : '<p>No stamp transfers were recorded.</p>'}<div class="actions"><a class="button accent" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${escape(receipt.address)}?cluster=devnet">Solana Explorer ↗</a><a class="text-link" href="/verify">Verify another trade</a></div></article></div>`;
+  main.innerHTML = `<div class="view"><div class="page-heading"><p class="eyebrow">Solana devnet · ${receipt.variant === 'choice' ? 'Choice round' : 'Classic round'}</p><h1>Committed swap receipt</h1>
+    <p class="muted">Setloop read this round from Solana and checked the program owner, album counts, and recorded transfers.</p></div>
+    <article class="panel"><p><span class="pill ${matched ? 'success' : 'warning'}">${matched ? '✓ All three sets complete' : 'No match · no stamps moved'}</span></p>
+    <dl class="receipt-data"><div><dt>Round account</dt><dd class="mono">${escape(short(receipt.address))}</dd></div><div><dt>Program ID</dt><dd class="mono">${escape(short(receipt.program))}</dd></div><div><dt>Closed</dt><dd>${escape(new Date(receipt.closedAt).toLocaleString())}</dd></div></dl>
+    ${matched ? `<ul class="receipt-list">${receipt.transfers.map(({from,to,stamp:piece}) => `<li>${stamp(piece.toLowerCase())}<span><strong>Collector ${receipt.seats.indexOf(from)+1}</strong> sent ${escape(piece)} to <strong>Collector ${receipt.seats.indexOf(to)+1}</strong>.</span></li>`).join('')}</ul>` : '<p>All three albums match their starting counts.</p>'}
+    <div class="actions"><a class="button accent" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${escape(receipt.address)}?cluster=devnet">Open round in Explorer ↗</a><a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${escape(receipt.program)}?cluster=devnet">Open program ↗</a><a class="text-link" href="/verify">Find another receipt</a></div></article>
+    <div class="results-grid">${receipt.inventories.map((inventory,slot) => `<div>${StampAlbum(inventory,`Collector ${slot+1}`,{small:true})}<a class="text-link mono" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${escape(receipt.seats[slot])}?cluster=devnet">${escape(short(receipt.seats[slot]))} ↗</a></div>`).join('')}</div></div>`;
 }
 
 async function renderCollection() {
@@ -432,7 +466,7 @@ function renderDocs() {
           <li><strong>Choose your stamps.</strong> The timer starts when the third collector joins. Open <strong>Your offer</strong>, select the extra stamp you can give and the missing stamp you want, then select <strong>Save my offer</strong>. You can change your offer before the round ends.</li>
           <li><strong>See the result.</strong> When the timer runs out, Setloop checks the offers. The host can finish the round early once all three offers are saved. Open the public receipt from the results page to share the outcome.</li></ol>
         </section>
-        <section id="matching"><h2>How a match works</h2><p>A swap works when each collector can send one stamp and get exactly the stamp they asked for. Here’s one complete example.</p>
+        <section id="matching"><h2>How a match works</h2><p>A swap works when each collector can send one stamp and get exactly the stamp they asked for. Classic rounds give you one possible offer. Choice rounds give you two duplicates to choose from, so three saved offers can still lead to no match. <a href="/practice?round=choice">Try a Choice round on your own</a>.</p><p>Here’s one complete example.</p>
           <dl class="guide-example"><div><dt>Alice</dt><dd>Gives Sun to Ben and gets Star from Cara.</dd></div><div><dt>Ben</dt><dd>Gives Moon to Cara and gets Sun from Alice.</dd></div><div><dt>Cara</dt><dd>Gives Star to Alice and gets Moon from Ben.</dd></div></dl>
           <p>All three stamps move together. If an offer is missing or the offers don’t form a complete swap, everyone keeps their original stamps. You can start another room and try again.</p></section>
         <section id="privacy"><h2>Links and privacy</h2><dl class="guide-example">
@@ -588,6 +622,7 @@ try {
   if (!route.length) renderHome();
   else if (route[0] === 'verify') renderVerify();
   else if (route[0] === 'docs') renderDocs();
+  else if (route[0] === 'blitz') await renderBlitz();
   else if (route[0] === 'practice') await renderPractice();
   else if (route[0] === 'collection') await renderCollection();
   else if (route[0] === 'devnet' && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(route[1] || '')) await renderDevnetReceipt(route[1]);
