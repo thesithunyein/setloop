@@ -27,26 +27,38 @@ async function withSignal(action) {
 }
 
 export async function makeBridge(keyPath) {
-  await assertDevnet();
   const operator = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(await readFile(keyPath,'utf8'))));
+  return makeBridgeWithOperator(operator);
+}
+
+export async function makeBridgeWithOperator(operator) {
+  await assertDevnet();
   if (!(await base.getAccountInfo(PROGRAM))?.executable) throw new Error('Deploy the configured Setloop program to Solana devnet before enabling SETLOOP_CHAIN_KEYPAIR.');
 
   function roomAccounts(room) {
     const derive = label => createHmac('sha256',operator.secretKey).update(`setloop:v1:${room.code}:${label}`).digest();
-    const seats = [0,1,2].map(i=>Keypair.fromSeed(derive(`seat:${i}`)));
+    const collectors = [0,1,2].map(i=>Keypair.fromSeed(room.session
+      ? createHmac('sha256',operator.secretKey).update(`setloop:judge:${room.session}:seat:${i}`).digest()
+      : derive(`seat:${i}`)));
+    const offset = room.roleOffset || 0;
+    const seats = collectors.map((_,i)=>collectors[(i + 3 - offset) % 3]);
     const host = seats[0];
     const plan = roomInstructions(host.publicKey,seats.map(seat=>seat.publicKey),operator.publicKey,derive('nonce').readBigUInt64LE(),room.duration*60,room.variant === 'choice');
-    return {seats,host,plan};
+    return {seats,collectors,host,plan};
   }
 
   async function open(room) {
     const {seats,host,plan} = roomAccounts(room);
     const current = await base.getAccountInfo(plan.room);
+    if (current?.owner.equals(PROGRAM) && decodeRoom(current.data).result) {
+      return decodeRoom(current.data).deadline*1000;
+    }
     if (!current || current.owner.toBase58() !== DELEGATION_ID) {
       const balances = await Promise.all(seats.map(seat=>base.getBalance(seat.publicKey)));
       const funding = seats.flatMap((seat,i)=>balances[i]>=SEAT_FUNDING ? [] : [SystemProgram.transfer({fromPubkey:operator.publicKey,toPubkey:seat.publicKey,lamports:SEAT_FUNDING-balances[i]})]);
       if (funding.length) {
-        if (await base.getBalance(operator.publicKey) < SEAT_FUNDING*3 + 10_000) throw new RoomError('The Setloop demo signer needs more devnet SOL to open a room.',503);
+        const needed = balances.reduce((sum,balance)=>sum + Math.max(0,SEAT_FUNDING-balance),0);
+        if (await base.getBalance(operator.publicKey) < needed + 10_000) throw new RoomError('The Setloop demo signer needs more devnet SOL to open a room.',503);
         await send(base,operator,funding);
       }
       if (!current) await send(base,host,[plan.create]);
@@ -96,6 +108,8 @@ export async function makeBridge(keyPath) {
   }
 
   return {
+    roomAccounts,
+    preflight: () => withSignal(()=>privateConnection(operator)),
     open: room => withSignal(()=>open(room)),
     offer: (room,player) => withSignal(()=>offer(room,player)),
     close: (room,early) => withSignal(()=>close(room,early)),

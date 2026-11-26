@@ -3,8 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": {"node": ">=22.13.0"},
-  "dependencies": {"@vercel/blob": "2.9.0"},
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "@magicblock-labs/ephemeral-rollups-sdk": "0.14.3",
+    "@solana/spl-token": "0.4.14",
+    "@solana/web3.js": "1.98.4",
+    "@vercel/blob": "2.9.0",
+    "tweetnacl": "1.0.3"
+  },
   "scripts": {
     "start": "node src/server.mjs",
     "test": "node --test",

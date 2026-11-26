@@ -1,6 +1,13 @@
 .data/
 .openai/
-chain/
+chain/src/
+chain/target/
+chain/node_modules/
+chain/*.toml
+chain/Cargo.lock
+chain/demo.mjs
+chain/award.mjs
+chain/verify.mjs
 dist/
 drizzle/
 test/

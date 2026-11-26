@@ -34,7 +34,10 @@ function number(value,length) {
 }
 
 export async function privateConnection(wallet) {
-  attestation ??= verifyTeeRpcIntegrity(TEE);
+  attestation ??= verifyTeeRpcIntegrity(TEE).catch(error => {
+    attestation = undefined;
+    throw error;
+  });
   await attestation;
   const {token} = await getAuthToken(TEE,wallet.publicKey,message => Promise.resolve(nacl.sign.detached(message,wallet.secretKey)));
   const endpoint = new URL(TEE);

@@ -15,7 +15,7 @@ const contentTypes = new Map([
   ['/google-sans.woff2','font/woff2'], ['/Google-Sans-OFL.txt','text/plain'],
 ]);
 
-export function createSetloopServer(databasePath = ':memory:', clock = Date.now, chain = null) {
+export function createSetloopServer(databasePath = ':memory:', clock = Date.now, chain = null, judge = null) {
   const db = new DatabaseSync(databasePath);
   db.exec(SCHEMA);
   const store = roomStore({
@@ -24,6 +24,9 @@ export function createSetloopServer(databasePath = ':memory:', clock = Date.now,
   });
   const active = new Map();
   async function routeRequest(request, path) {
+    if (path === '/api/judge' || path.startsWith('/api/judge/')) {
+      return judge ? judge(request) : Response.json({error:'The live demo is temporarily unavailable. You can open a verified example below.'},{status:503});
+    }
     const key = path.match(/^\/api\/rooms\/([A-Z0-9]{6})(?:\/|$)/i)?.[1]?.toUpperCase();
     if (!chain || !key) return handleApi(request,store,clock,chain);
     const result = (active.get(key) || Promise.resolve()).catch(()=>{}).then(()=>handleApi(request,store,clock,chain));
@@ -65,7 +68,19 @@ if (process.argv[1] && new URL(import.meta.url).pathname.endsWith('/src/server.m
   const programMode = process.env.SETLOOP_CHAIN_KEYPAIR;
   const chain = programMode ? await (await import('../chain/bridge.mjs')).makeBridge(programMode) : null;
   const file = chain ? 'setloop-devnet.sqlite' : 'setloop.sqlite';
-  const server = createSetloopServer(process.env.SETLOOP_DB || new URL(file,directory),Date.now,chain);
+  const judgeKey = process.env.SETLOOP_JUDGE_KEYPAIR;
+  let judge = null;
+  if (judgeKey) {
+    const {createJudgeHandler} = await import('./judge.mjs');
+    const db = new DatabaseSync(new URL('setloop-judge.sqlite',directory));
+    db.exec(SCHEMA);
+    const store = roomStore({
+      first: (sql, ...args) => db.prepare(sql).get(...args),
+      run: (sql, ...args) => db.prepare(sql).run(...args).changes,
+    });
+    judge = createJudgeHandler({store,signer:await readFile(judgeKey,'utf8')});
+  }
+  const server = createSetloopServer(process.env.SETLOOP_DB || new URL(file,directory),Date.now,chain,judge);
   const host = process.env.SETLOOP_HOST || '127.0.0.1';
   server.listen(Number(process.env.PORT || 4173), host, () => console.log(`Setloop running at http://${host}:${server.address().port}`));
 }

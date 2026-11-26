@@ -1,9 +1,9 @@
 import { BlobPreconditionFailedError, get, put } from '@vercel/blob';
 
-const pathFor = code => `rooms/${code}.json`;
 const writeOptions = {access:'private',contentType:'application/json',addRandomSuffix:false};
 
-export function createBlobRoomStore({read = get, write = put, credentials} = {}) {
+export function createBlobRoomStore({read = get, write = put, credentials, namespace = 'rooms'} = {}) {
+  const pathFor = code => `${namespace}/${code}.json`;
   async function readRoom(code) {
     const blob = await read(pathFor(code),{access:'private',useCache:false,...credentials});
     if (!blob) return null;

@@ -396,7 +396,15 @@ async function renderBlitz() {
   main.innerHTML = `<div class="view">
     <header class="page-heading"><p class="eyebrow">MagicBlock Blitz v10</p><h1>Setloop demo and proof</h1>
       <p class="muted">Three collectors make private offers. When the offers form a cycle, all three albums fill together.</p>
-      <div class="actions">${matched ? `<a class="button accent" href="/devnet/${encodeURIComponent(matched.address)}">Open the private swap receipt</a>` : ''}<a class="button ${matched ? 'outline' : 'accent'}" href="/practice?round=choice">Play a Choice round</a><a class="text-link" href="https://github.com/thesithunyein/setloop">Source on GitHub ↗</a></div></header>
+      <div class="actions"><a class="button accent" href="#live-demo">Run a private devnet swap</a>${matched ? `<a class="button outline" href="/devnet/${encodeURIComponent(matched.address)}">Open the verified example</a>` : ''}<a class="text-link" href="https://github.com/thesithunyein/setloop">Source on GitHub ↗</a></div></header>
+    <section class="panel judge-live" id="live-demo" aria-labelledby="judge-title">
+      <h2 id="judge-title">Run a private devnet swap</h2>
+      <p>Play as Alice, Ben, and Cara in one tab. Setloop supplies three funded test wallets. Each finished round gets a fresh Solana receipt.</p>
+      <div id="judge-controls"></div>
+      <p class="helper" id="judge-status" role="status" aria-live="polite"></p>
+      <p class="form-error" id="judge-error" role="alert"></p>
+      <div class="actions">${matched ? `<a class="text-link" href="/devnet/${encodeURIComponent(matched.address)}">Open the verified match ↗</a>` : ''}${noMatch ? `<a class="text-link" href="/devnet/${encodeURIComponent(noMatch.address)}">Open the verified no-match ↗</a>` : ''}<a class="text-link" href="/practice?round=choice">Play offline practice ↗</a></div>
+    </section>
     ${matched && noMatch ? `<section class="panel verdict"><h2>Check the result in one minute</h2>
       <ol class="guide-example proof-steps">
         <li><strong>Try the choices.</strong> In <a href="/practice?round=choice">solo practice</a>, offer Sun, Moon, and Star in that order, then change Alice’s offer to Moon and replay.</li>
@@ -417,11 +425,169 @@ async function renderBlitz() {
       ${published?.privateDelegation ? `<p class="room-bottom">A separate room delegated to the private validator. End-to-end private settlement is pending while the private RPC is unavailable. <a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/tx/${encodeURIComponent(published.privateDelegation.signature)}?cluster=devnet">Verify private delegation ↗</a></p>` : ''}
     </section>
     ${edition ? `<section class="panel participants"><h2>Collectors keep their completion badges</h2>
-      <p>Each of three devnet wallets received one transferable badge after a matched round. The wallets kept those badges through later rounds. The edition is fixed at three. The stamp counts used to match offers remain specific to each room.</p>
+      <p>Each of three devnet wallets received one transferable badge after an earlier matched round. The edition is fixed at three. The live demo above gives the player wallets reusable Sun, Moon, and Star stamps as well.</p>
       <div class="actions"><a class="button outline compact" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${encodeURIComponent(edition.mint)}?cluster=devnet">Badge mint ↗</a><a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/tx/${encodeURIComponent(edition.signature)}?cluster=devnet">Issuance transaction ↗</a><a class="text-link" href="/devnet/${encodeURIComponent(edition.afterRound)}">Later round with the same wallets ↗</a></div>
       <div class="actions">${edition.recipients.map(({account},i) => `<a class="text-link" target="_blank" rel="noopener" href="https://explorer.solana.com/address/${encodeURIComponent(account)}?cluster=devnet">Collector ${i+1}’s token account ↗</a>`).join('')}</div></section>` : ''}
     <section class="panel participants"><h2>Try the product</h2><p>In Choice rounds, every player has two valid duplicates they can give. Make offers for all three players, then change one offer to see when a swap fails.</p>
     <div class="actions"><a class="button outline" href="/practice?round=choice">Practice both outcomes</a><a class="text-link" href="/receipt/ZUZSQ4">Matched web receipt ↗</a><a class="text-link" href="/receipt/XQYB42">No-match web receipt ↗</a></div></section></div>`;
+  mountJudge();
+}
+
+const judgeSessionKey = 'setloop-live-judge-v1';
+const judgeOffers = [['sun','moon'], ['moon','star'], ['star','sun']];
+const explorerTx = signature => `https://explorer.solana.com/tx/${encodeURIComponent(signature)}?cluster=devnet`;
+const explorerWallet = address => `https://explorer.solana.com/address/${encodeURIComponent(address)}?cluster=devnet`;
+
+function mountJudge() {
+  const controls = document.querySelector('#judge-controls');
+  const status = document.querySelector('#judge-status');
+  const error = document.querySelector('#judge-error');
+  let session = getStorage(judgeSessionKey);
+  let state;
+  let slot = 0;
+  let busy = false;
+  let readyVersion;
+  const timeLeft = deadline => {
+    const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2,'0')}`;
+  };
+
+  function show() {
+    const round = state?.rounds.at(-1);
+    const index = (state?.rounds.length || 1) - 1;
+    if (!round?.deadline) {
+      controls.innerHTML = '<div class="actions"><button class="button accent" data-judge="start">Start live demo</button></div><p class="helper">Uses free test stamps. No wallet or signup required.</p>';
+      return;
+    }
+    if (round.receipt) {
+      const receipt = round.receipt;
+      const matched = receipt.transfers.length > 0;
+      const previous = index > 0 && state.rounds[index - 1].receipt;
+      const next = index === 0 ? 'Try the same round with one change' : 'Trade again with these stamps';
+      controls.innerHTML = `<div class="judge-result">
+        <h3>${matched ? 'All three stamps moved together' : 'No match. Everyone kept their stamps.'}</h3>
+        <p>${matched ? (index === 0 ? 'Alice, Ben, and Cara all completed their albums.' : 'This swap reused the stamps already held in the three wallets.') : 'Every wallet’s stamp count is identical to its count before the round.'}</p>
+        ${matched ? `<ul class="judge-transfers">${receipt.transfers.map(({from,to,stamp}) => `<li>${demoNames[from]} sent ${capitalize(stamp)} to ${demoNames[to]}</li>`).join('')}</ul>` : ''}
+        <div class="results-grid">${receipt.after.map((inventory, i) => {
+          const claim = state.claims[i];
+          return `<div>${StampAlbum(claim?.signature ? [0,0,0] : inventory,demoNames[i],{small:true})}
+            <a class="text-link" href="${explorerWallet(claim?.signature ? claim.destination : state.wallets[i])}" target="_blank" rel="noopener">${claim?.signature ? 'View receiving wallet' : 'View demo wallet'} ↗</a></div>`;
+        }).join('')}</div>
+        ${matched ? '' : `<details><summary>Compare the wallet balances</summary><ul class="judge-transfers">${demoNames.map((name,i) =>
+          `<li><strong>${name}</strong> · ${stamps.map((type,j) => `${capitalize(type)} ${round.before[i][j]} → ${receipt.after[i][j]}`).join(', ')}</li>`
+        ).join('')}</ul></details>`}
+        <div class="actions"><a class="button outline" href="/devnet/${encodeURIComponent(receipt.address)}">Read room receipt</a>
+          <a class="text-link" href="${explorerTx(receipt.signature)}" target="_blank" rel="noopener">MagicBlock commitment ↗</a>
+          ${receipt.stampSignature ? `<a class="text-link" href="${explorerTx(receipt.stampSignature)}" target="_blank" rel="noopener">Verify all three stamp transfers ↗</a>` : ''}
+          ${previous ? `<a class="text-link" href="/devnet/${encodeURIComponent(previous.address)}">Compare the previous receipt ↗</a>` : ''}
+        </div>
+        <details><summary>Stamp mint addresses</summary><div class="actions">${state.mints.map((mint, i) => `<a class="text-link" href="${explorerWallet(mint)}" target="_blank" rel="noopener">${capitalize(stamps[i])} ↗</a>`).join('')}</div></details>
+        ${index < 2 ? `<button class="button accent" data-judge="next">${next}</button>` : `<details class="judge-claim">
+          <summary>Keep the stamps in your wallet</summary>
+          <p class="helper">Enter a Solana wallet address you control. Setloop sends that seat’s stamps on devnet. Check the address before sending.</p>
+          ${demoNames.map((name,i) => {
+            const claim = state.claims[i];
+            if (claim?.signature) return `<p>${name}’s stamps were sent. <a class="text-link" href="${explorerTx(claim.signature)}" target="_blank" rel="noopener">View transfer ↗</a></p>`;
+            return `<form class="form-stack" data-judge-claim="${i}"><label>${name}’s destination wallet
+              <input name="destination" required autocomplete="off" spellcheck="false" minlength="32" maxlength="44" value="${escape(claim?.destination)}" ${claim?.destination ? 'readonly' : ''}>
+              </label><button class="button outline compact" type="submit">Send ${name}’s test stamps</button></form>`;
+          }).join('')}</details>`}
+      </div>`;
+      return;
+    }
+    const role = (slot + round.roleOffset) % 3;
+    const firstOffers = state.rounds[0].receipt?.transfers;
+    const priorGive = firstOffers?.find(transfer => transfer.from === slot)?.stamp || stamps[slot];
+    const options = judgeOffers[role].filter(give => round.before[slot][stamps.indexOf(give)] > 0);
+    const suggested = index === 1 ? (slot === 0 ? options.find(give => give !== priorGive) : priorGive) : stamps[role];
+    const recommended = options.includes(suggested) ? suggested : options[0];
+    const sealed = Boolean(round.ready & (1 << slot));
+    const expired = Date.now() >= round.deadline;
+    const instructions = [
+      'To complete all three sets, seal Sun for Alice, Moon for Ben, and Star for Cara.',
+      firstOffers?.length ? 'Change only Alice’s offer. Keep Ben and Cara on their previous choices, then see what happens.' : 'To see what happens when one offer breaks the cycle, seal Moon for Alice, Moon for Ben, and Star for Cara.',
+      round.roleOffset ? 'Trade the stamps you received earlier. The same three wallets are spending their current balances.' : 'Trade again with the stamps already held by the same three wallets.',
+    ];
+    controls.innerHTML = `<p class="judge-guide">${instructions[index]}</p>
+      <div class="judge-seats" role="group" aria-label="Select collector">${demoNames.map((name, i) => `<button type="button" class="button compact ${slot === i ? 'accent' : 'outline'}" data-judge="seat" data-seat="${i}" aria-pressed="${slot === i}">${name}${round.ready & (1 << i) ? ' · Sealed' : ''}</button>`).join('')}</div>
+      <div class="judge-seat-body">${StampAlbum(round.before[slot],`${demoNames[slot]}’s wallet`,{small:true})}
+        <div class="form-stack"><h3>${demoNames[slot]} asks for ${capitalize(stamps[(role + 2) % 3])}</h3>
+        <p>${expired ? 'Time is up. Open the round result.' : sealed ? 'This seat has a sealed offer. You can replace it before closing.' : options.length ? 'Choose the stamp this seat will give.' : 'This wallet has no stamp it can offer in this round.'}</p>
+        <div class="actions">${expired ? '' : options.map(give => `<button class="button ${give === recommended ? 'accent' : 'outline'}" type="button" data-judge="offer" data-give="${give}">Seal ${capitalize(give)}${give === recommended ? ' · Suggested' : ''}</button>`).join('')}</div>
+      </div></div>
+      <div class="actions"><button class="button outline" data-judge="finish" ${round.ready !== 7 && !expired ? 'disabled' : ''}>Finish round</button><span class="helper">${demoNames.filter((_,i) => round.ready & (1 << i)).length} of 3 seats sealed</span><span class="helper">Time left <span data-judge-clock>${timeLeft(round.deadline)}</span></span></div>`;
+  }
+
+  async function act(action, body) {
+    if (busy) return;
+    busy = true;
+    error.textContent = '';
+    controls.setAttribute('aria-busy','true');
+    for (const button of controls.querySelectorAll('button')) button.disabled = true;
+    status.textContent = {
+      start: 'Funding seats, creating wallets’ stamp albums, and opening the private room. This can take a minute.',
+      next: 'Opening a fresh MagicBlock room with the same wallets.',
+      resume: 'Restoring your live demo.',
+      offer: 'Sealing this offer with MagicBlock.',
+      finish: 'Settling the private round and checking the Solana receipt and wallet balances.',
+      claim: 'Sending the test stamps to the destination wallet.',
+    }[action];
+    try {
+      const response = await fetch(`/api/judge/${action}`, {method:'POST',cache:'no-store',headers:{
+        Authorization:`Bearer ${session}`, 'Content-Type':'application/json',
+      },body:JSON.stringify({...body,round:state?.rounds.length})});
+      const reply = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (action === 'resume' && response.status === 404) return;
+        throw new Error(reply.error || 'Devnet could not confirm this step. Retry or open a verified example below.');
+      }
+      state = reply;
+      if (action === 'start' || action === 'next') slot = 0;
+      status.textContent = action === 'offer' ? `${demoNames[slot]}’s offer was sealed.` : '';
+    } catch (failure) {
+      error.textContent = failure.message === 'Failed to fetch' ? 'Devnet is unreachable. Open a verified example below or try again.' : failure.message;
+    } finally {
+      if (action !== 'offer' || error.textContent) status.textContent = '';
+      busy = false;
+      controls.removeAttribute('aria-busy');
+      show();
+      if (action === 'claim') controls.querySelector('.judge-claim').open = true;
+    }
+  }
+
+  controls.addEventListener('click', event => {
+    const button = event.target.closest('button[data-judge]');
+    if (!button || busy) return;
+    const action = button.dataset.judge;
+    if (action === 'seat') {
+      slot = Number(button.dataset.seat);
+      show();
+      controls.querySelector(`[data-seat="${slot}"]`)?.focus();
+      return;
+    }
+    if (!session) {
+      session = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2,'0')).join('');
+      try { localStorage.setItem(judgeSessionKey,session); } catch { /* The current tab can still finish the demo. */ }
+    }
+    void act(action, action === 'offer' ? {slot, give:button.dataset.give} : undefined);
+  });
+  controls.addEventListener('submit', event => {
+    const form = event.target.closest('[data-judge-claim]');
+    if (!form) return;
+    event.preventDefault();
+    void act('claim', {slot:Number(form.dataset.judgeClaim),destination:new FormData(form).get('destination').trim()});
+  });
+  show();
+  if (session) void act('resume');
+  setInterval(() => {
+    const round = state?.rounds.at(-1);
+    const timer = controls.querySelector('[data-judge-clock]');
+    if (round && timer) timer.textContent = timeLeft(round.deadline);
+    if (!busy && round?.deadline && !round.receipt && Date.now() >= round.deadline && readyVersion !== round.deadline) {
+      readyVersion = round.deadline;
+      show();
+    }
+  }, 1000);
 }
 
 async function renderDevnetReceipt(address) {
@@ -499,7 +665,7 @@ function renderDocs() {
           <div><dt>The receipt isn’t ready</dt><dd>Open the room and check whether the round has ended, then try the receipt again.</dd></div>
           <div><dt>Online rooms are unavailable</dt><dd>Try again later. You can still use this guide and run a <a href="/practice">practice swap</a> in your browser.</dd></div>
         </dl></section>
-        <section id="technical"><h2>Technical details</h2><p>A regular Setloop receipt is a record served by Setloop. Your browser checks that the recorded transfers agree with the before and after totals and recalculates a checksum, which is a short digital fingerprint of the record.</p><p>If a round was recorded on the Solana test network, its receipt links to that separate record. Use the optional Solana lookup only if you were given a round address. A regular receipt can be found with its room code.</p>
+        <section id="technical"><h2>Technical details</h2><p>A regular Setloop receipt is a record served by Setloop. Your browser checks that the recorded transfers agree with the before and after totals and recalculates a checksum, which is a short digital fingerprint of the record.</p><p>Try the <a href="/blitz#live-demo">live devnet demo</a> to play with reusable test stamps. MagicBlock records the outcome of each private round on Solana. After a match, one separate transaction moves all three stamps between wallets. When the offers miss, all wallet balances stay the same. You can check both records from the demo.</p>
           <h3>Test an online room in three tabs</h3><p>This creates a real online test room with three sample players and a public receipt. Use it to check the room service from one device.</p><button class="button outline" data-action="demo">Open three-tab demo</button></section>
       </article>
     </div>

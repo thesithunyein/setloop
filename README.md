@@ -17,7 +17,7 @@
 
 | Start here | What you can verify |
 | --- | --- |
-| [Blitz demo and proof](https://setloop.vercel.app/blitz) | Deployed Solana program, MagicBlock delegation, and committed matched and no-match rounds. |
+| [Run a private devnet swap](https://setloop.vercel.app/blitz#live-demo) | Play all three funded seats, seal offers on MagicBlock, and open a fresh Solana receipt. Replay with one changed offer or re-trade the stamps you earned. |
 | [Practice a Choice round](https://setloop.vercel.app/practice?round=choice) | Pick one of two valid offers for each collector. A round can close without a match even when all three offers were saved. |
 | [Play with two friends](https://setloop.vercel.app/) | Create a room, share its code, and save one private offer per player. |
 | [Open a verified production receipt](https://setloop.vercel.app/receipt/A4T4S3) | See three completed transfers and the browser's check of the receipt and album totals. |
@@ -57,6 +57,16 @@ Classic rounds start with one possible offer per collector. Choice rounds start 
 | Local multiplayer | Runs with Node and SQLite | Tests cover concurrent joins and offers, repeated closes, and no-match rounds. [Tests](test/rooms.test.mjs) |
 | Solana and MagicBlock | Private ER match and no-match verified on devnet | Three wallets could read their own offers and were denied all six cross-seat reads in each run. [Matched receipt](https://setloop.vercel.app/devnet/G5T1hqXX9Y66GqztrR6qokJqfejzkW7DzK4nRhQJyPWN) · [No-match receipt](https://setloop.vercel.app/devnet/AUVS6efh9zQ75h1wnPbRfME13VK67UkR3XDr3CosMau7) |
 | Collector ownership | Fixed-supply devnet completion badges | Three badges were issued to three wallets. The same wallets retained their badges after a later no-match round. [Badge mint](https://explorer.solana.com/address/hXKUAee2Yrh8gaEp1XqFoPd2bjDNCqCSr2cEzRAeHUy?cluster=devnet) |
+
+### Live devnet demo
+
+1. In the [judge page](https://setloop.vercel.app/blitz#live-demo), start a sponsored demo. Seal Sun for Alice, Moon for Ben, and Star for Cara. Finish and follow the links to the MagicBlock commitment and the three SPL transfers.
+2. Open the comparison round. Change only Alice to Moon. The receipt and before/after wallet balances show that every collector kept their stamps.
+3. Trade again using the same wallets. Follow the suggested offers to spend the stamps received in the first round. After finishing, a collector can send their remaining stamps to a Solana wallet they control.
+
+Setloop signs for the three hosted demo wallets. The private rollup matches the offers and commits the decision to Solana. After verifying that commitment, the service signs one separate Solana transaction for all three wallet-to-wallet stamp transfers. On retry, a receipt-specific marker in that transaction prevents the service from transferring the stamps twice. A no-match result sends no stamp transaction. The room receipt reports the rollup's round rules and simulated starting inventory. The judge page reports the actual SPL balances, including stamps carried from earlier rounds.
+
+The sponsored demo has a limited number of sessions. If live devnet is unavailable or sponsorship is exhausted, the judge page links to verified examples.
 
 ## Architecture
 
@@ -142,6 +152,7 @@ Open [localhost:4173](http://127.0.0.1:4173/). On Windows, you can also run [Sta
 | `SETLOOP_HOST` | `127.0.0.1` |
 | `SETLOOP_DB` | Override the SQLite path. The default is `.data/setloop.sqlite`. |
 | `SETLOOP_CHAIN_KEYPAIR` | Optional devnet coordinator key path for the experimental adapter |
+| `SETLOOP_JUDGE_KEYPAIR` | Optional independent devnet-only sponsor key path for testing the judge flow locally |
 
 To try an online round on one device, open **Guide → Technical details → Open three-tab demo**. Open each sample player in a separate tab, save all three offers, then finish from Alice's tab. For a no-match round, let the timer expire with one offer missing.
 
@@ -157,6 +168,8 @@ The tests cover seat-level offer visibility, concurrent joins and writes, repeat
 Production runs at [setloop.vercel.app](https://setloop.vercel.app/) from `main`. The [Vercel config](vercel.json) serves `public/`, packages the browser practice rules, and routes API requests to the [dispatch function](api/dispatch.mjs).
 
 To host your own copy, connect a **private Vercel Blob store** to your project and deploy after the connection is configured. The function supports the store ID with Vercel runtime identity or a project-scoped `BLOB_READ_WRITE_TOKEN`. Keep credentials in the deployment environment.
+
+To enable the hosted judge flow, set `SETLOOP_JUDGE_SIGNER` as a sensitive Production variable with a separate, funded devnet sponsor keypair in Solana CLI byte-array format. Each sponsor can open up to three sessions, and each session supports up to three rounds. Store the program upgrade key separately. The judge service checks the devnet genesis hash before it signs.
 
 ## Solana and MagicBlock
 
