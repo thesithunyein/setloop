@@ -5,7 +5,9 @@ const writeOptions = {access:'private',contentType:'application/json',addRandomS
 export function createBlobRoomStore({read = get, write = put, credentials, namespace = 'rooms'} = {}) {
   const pathFor = code => `${namespace}/${code}.json`;
   async function readRoom(code) {
-    const blob = await read(pathFor(code),{access:'private',useCache:false,...credentials});
+    // Keep the origin ETag used by conditional writes, even when a room grows
+    // large enough for an intermediary to compress its JSON response.
+    const blob = await read(pathFor(code),{access:'private',useCache:false,headers:{'Accept-Encoding':'identity'},...credentials});
     if (!blob) return null;
     return {room: await new Response(blob.stream).json(),version:blob.blob.etag};
   }

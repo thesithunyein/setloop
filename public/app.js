@@ -431,12 +431,24 @@ async function renderBlitz() {
     <section class="panel participants"><h2>Try the product</h2><p>In Choice rounds, every player has two valid duplicates they can give. Make offers for all three players, then change one offer to see when a swap fails.</p>
     <div class="actions"><a class="button outline" href="/practice?round=choice">Practice both outcomes</a><a class="text-link" href="/receipt/ZUZSQ4">Matched web receipt ↗</a><a class="text-link" href="/receipt/XQYB42">No-match web receipt ↗</a></div></section></div>`;
   mountJudge();
+  if (location.hash === '#live-demo') document.querySelector('#live-demo').scrollIntoView();
 }
 
 const judgeSessionKey = 'setloop-live-judge-v1';
 const judgeOffers = [['sun','moon'], ['moon','star'], ['star','sun']];
 const explorerTx = signature => `https://explorer.solana.com/tx/${encodeURIComponent(signature)}?cluster=devnet`;
 const explorerWallet = address => `https://explorer.solana.com/address/${encodeURIComponent(address)}?cluster=devnet`;
+
+async function judgeRequest(action, session, body) {
+  const response = await fetch(`/api/judge/${action}`, {method:'POST',cache:'no-store',headers:{
+    Authorization:`Bearer ${session}`, 'Content-Type':'application/json',
+  },body:JSON.stringify(body || {})});
+  const data = await response.json().catch(() => ({}));
+  if (response.ok) return data;
+  const error = new Error(data.error || 'Devnet could not confirm this step. Retry or open a verified example below.');
+  error.status = response.status;
+  throw error;
+}
 
 function mountJudge() {
   const controls = document.querySelector('#judge-controls');
@@ -480,6 +492,7 @@ function mountJudge() {
           <a class="text-link" href="${explorerTx(receipt.signature)}" target="_blank" rel="noopener">MagicBlock commitment ↗</a>
           ${receipt.stampSignature ? `<a class="text-link" href="${explorerTx(receipt.stampSignature)}" target="_blank" rel="noopener">Verify all three stamp transfers ↗</a>` : ''}
           ${previous ? `<a class="text-link" href="/devnet/${encodeURIComponent(previous.address)}">Compare the previous receipt ↗</a>` : ''}
+          <a class="text-link" href="/collection">My albums ↗</a>
         </div>
         <details><summary>Stamp mint addresses</summary><div class="actions">${state.mints.map((mint, i) => `<a class="text-link" href="${explorerWallet(mint)}" target="_blank" rel="noopener">${capitalize(stamps[i])} ↗</a>`).join('')}</div></details>
         ${index < 2 ? `<button class="button accent" data-judge="next">${next}</button>` : `<details class="judge-claim">
@@ -533,19 +546,13 @@ function mountJudge() {
       claim: 'Sending the test stamps to the destination wallet.',
     }[action];
     try {
-      const response = await fetch(`/api/judge/${action}`, {method:'POST',cache:'no-store',headers:{
-        Authorization:`Bearer ${session}`, 'Content-Type':'application/json',
-      },body:JSON.stringify({...body,round:state?.rounds.length})});
-      const reply = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        if (action === 'resume' && response.status === 404) return;
-        throw new Error(reply.error || 'Devnet could not confirm this step. Retry or open a verified example below.');
-      }
-      state = reply;
+      state = await judgeRequest(action,session,{...body,round:state?.rounds.length});
       if (action === 'start' || action === 'next') slot = 0;
       status.textContent = action === 'offer' ? `${demoNames[slot]}’s offer was sealed.` : '';
     } catch (failure) {
-      error.textContent = failure.message === 'Failed to fetch' ? 'Devnet is unreachable. Open a verified example below or try again.' : failure.message;
+      if (action !== 'resume' || failure.status !== 404) {
+        error.textContent = failure.message === 'Failed to fetch' ? 'Devnet is unreachable. Open a verified example below or try again.' : failure.message;
+      }
     } finally {
       if (action !== 'offer' || error.textContent) status.textContent = '';
       busy = false;
@@ -618,12 +625,30 @@ async function renderCollection() {
   const rooms = records.flatMap(result => result.status === 'fulfilled' && result.value.room.self && !result.value.room.demo ? [result.value.room] : []);
   const latest = rooms.filter(room => room.receipt).sort((a,b) => b.receipt.closedAt-a.receipt.closedAt);
   const failed = records.some(record => record.status === 'rejected' && record.reason.status !== 404);
-  main.innerHTML = `<div class="view single-column"><div class="page-heading"><h1>My albums</h1><p class="muted">Each room gives you its own stamp album. This page shows the rooms you’ve joined in this browser.</p></div><div class="collection-list">
+  const judgeSession = getStorage(judgeSessionKey);
+  main.innerHTML = `<div class="view single-column"><div class="page-heading"><h1>My albums</h1><p class="muted">See the albums you’ve started in this browser.</p></div><div class="collection-list">
+    ${judgeSession ? '<section class="panel" id="saved-stamp-albums"><h2>Devnet stamp albums</h2><p class="helper" role="status">Loading saved albums…</p><a class="text-link" href="/blitz#live-demo">Open live demo ↗</a></section>' : ''}
     ${storageBlocked ? '<section class="panel"><h2>Browser storage is blocked</h2><p>Use your private player link to reopen your album.</p><a class="text-link" href="/docs#privacy">About private player links</a></section>' : ''}
     ${failed ? '<section class="panel"><h2>Some albums couldn’t load</h2><p>Your saved links are still in this browser.</p><button class="button outline" data-action="retry">Try again</button></section>' : ''}
     ${rooms.map(room => `<div class="collection-room">${StampAlbum(room.self.inventory, room.name || `Room ${room.code}`, {small:true})}${room.receipt ? '' : `<a class="text-link" href="/room/${room.code}">Return to room ${room.code} ↗</a>`}</div>`).join('')}
-    ${!rooms.length && !failed && !storageBlocked ? '<section class="panel"><h2>No albums yet</h2><p>Start or join a room to get your first album.</p><a href="/" class="button accent">Find a room</a></section>' : ''}
+    ${!rooms.length && !failed && !storageBlocked && !judgeSession ? '<section class="panel"><h2>No albums yet</h2><p>Start or join a room to get your first album.</p><a href="/" class="button accent">Find a room</a></section>' : ''}
     ${latest.length ? `<section class="panel"><h2>Past swaps</h2>${latest.map(room => `<a class="history-row" href="/receipt/${room.code}"><span>${escape(room.name || room.code)}</span><span class="pill ${room.status === 'matched' ? 'success' : 'warning'}">${room.status === 'matched' ? 'Matched' : 'No match'} ↗</span></a>`).join('')}</section>` : ''}</div></div>`;
+  if (!judgeSession) return;
+  const section = document.querySelector('#saved-stamp-albums');
+  try {
+    const saved = await judgeRequest('resume',judgeSession);
+    const round = saved.rounds.at(-1);
+    const balances = round?.receipt?.after || round?.before;
+    const albums = balances ? `<div class="results-grid">${balances.map((inventory,i) => {
+      const claim = saved.claims[i];
+      if (claim?.signature) return `<div class="panel"><h3>${demoNames[i]}</h3><p>Sent to your wallet.</p><a class="text-link" target="_blank" rel="noopener" href="${explorerWallet(claim.destination)}">View wallet ↗</a></div>`;
+      return StampAlbum(inventory,demoNames[i],{small:true});
+    }).join('')}</div>` : '<p>Finish setting up your demo to see the three albums.</p>';
+    section.innerHTML = `<h2>Devnet stamp albums</h2><p>Your latest saved stamp counts from the live demo.</p>${albums}
+      <div class="actions"><a class="button outline" href="/blitz#live-demo">Continue live demo</a>${round?.receipt ? `<a class="text-link" href="/devnet/${encodeURIComponent(round.receipt.address)}">Latest room receipt ↗</a>` : ''}</div>`;
+  } catch (error) {
+    section.querySelector('[role="status"]').textContent = error.status === 404 ? 'Open the live demo to start an album.' : 'Your demo link is saved. Setloop couldn’t load the albums right now.';
+  }
 }
 
 function renderDocs() {

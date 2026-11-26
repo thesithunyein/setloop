@@ -7,7 +7,7 @@ test('private Vercel rooms read fresh and reject stale updates', async () => {
   const blobs = new Map();
   const store = createBlobRoomStore({
     async read(path, options) {
-      assert.deepEqual(options,{access:'private',useCache:false});
+      assert.deepEqual(options,{access:'private',useCache:false,headers:{'Accept-Encoding':'identity'}});
       const entry = blobs.get(path);
       return entry ? {blob:{etag:entry.etag},stream:new Response(entry.body).body} : null;
     },

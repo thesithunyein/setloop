@@ -1484,6 +1484,7 @@ dialog .dismiss:hover {
 .judge-claim .button { justify-self: start; }
 .judge-live [aria-busy="true"] { opacity: .72; }
 .judge-live .form-error:empty { display: none; }
+#saved-stamp-albums .results-grid { grid-template-columns: 1fr; margin-block: 1rem; }
 @media (max-width: 620px) {
   .judge-seat-body { grid-template-columns: minmax(0, 1fr); }
 }
