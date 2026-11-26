@@ -17,6 +17,7 @@ export default {
     const judge = /^\/api\/judge(?:\/[a-z]+)?$/.test(url.pathname);
     const signer = process.env.SETLOOP_JUDGE_SIGNER;
     if (judge && !signer) {
+      console.warn('Setloop judge signer is missing from this deployment.');
       return Response.json({error:'The live demo is temporarily unavailable. You can open a verified example below.'},{status:503,headers:{'Cache-Control':'no-store'}});
     }
     const oidcToken = request.headers.get('x-vercel-oidc-token') || process.env.VERCEL_OIDC_TOKEN;
@@ -29,7 +30,9 @@ export default {
       try {
         const {createJudgeHandler} = await import('../src/judge.mjs');
         return await createJudgeHandler({signer,store:createBlobRoomStore({credentials,namespace:'judge'})})(request);
-      } catch {
+      } catch (error) {
+        const validCode = /^[A-Z_]+$/.test(error?.code || '') ? error.code : null;
+        console.error('Setloop judge initialization failed.', error?.name, validCode);
         return Response.json({error:'The live demo is temporarily unavailable. You can open a verified example below.'},{status:503,headers:{'Cache-Control':'no-store'}});
       }
     }
