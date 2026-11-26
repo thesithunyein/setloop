@@ -1,56 +1,166 @@
-<img src="public/setloop-logo.png" alt="Setloop logo" width="144" height="144">
+<p align="center">
+  <a href="https://setloop.vercel.app/"><img src="public/setloop-logo.png" alt="Setloop logo" width="160" height="160"></a>
+</p>
 
-# Setloop
+<h1 align="center">Setloop</h1>
 
-Three collectors privately offer duplicate stamps. A matching cycle moves all three stamps in one settlement. If the round closes without a cycle, everyone keeps their pieces.
+<p align="center"><strong>One swap. Three full sets.</strong><br>A private three-person stamp swap you can play in your browser.</p>
 
-**Build status.** The local web app completed the three-seat browser demo and receipt check. Five web tests and three standalone Rust matching tests passed. The MagicBlock devnet TEE authenticated successfully. The full Solana program build was interrupted by local I/O failures. The deployment wallet had no devnet SOL after the faucet rejected its requests, so the live three-wallet settlement remains unverified.
+<p align="center">
+  <a href="https://setloop.vercel.app/"><img alt="Live app" src="https://img.shields.io/badge/Setloop-Live%20app-cf1124?style=flat-square&amp;logo=vercel&amp;logoColor=white"></a>
+  <a href="https://setloop.vercel.app/practice"><img alt="Solo practice" src="https://img.shields.io/badge/Play-Solo%20practice-211b20?style=flat-square"></a>
+  <a href="https://setloop.vercel.app/docs"><img alt="User guide" src="https://img.shields.io/badge/Read-User%20guide-cf1124?style=flat-square"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-211b20?style=flat-square"></a>
+</p>
 
-## Run the web app
+## Try it
 
-Requires Node.js 22.13 or newer. The web app uses the built-in Node SQLite driver and needs no npm install.
+| Start here | What you can verify |
+| --- | --- |
+| [Practice solo](https://setloop.vercel.app/practice) | Make all three offers to complete the albums. Leave one offer out and no stamps move. |
+| [Play with two friends](https://setloop.vercel.app/) | Create a room, share its code, and save one private offer per player. |
+| [Open a verified production receipt](https://setloop.vercel.app/receipt/A4T4S3) | See three completed transfers and the browser's check of the receipt and album totals. |
+| [Read the user guide](https://setloop.vercel.app/docs) | Read the steps for hosting, joining, sharing links, and troubleshooting. |
+
+## The problem
+
+A direct swap works only if two people each have what the other needs. Three friends can have all the right pieces and still be stuck. Alice needs Cara's extra Star, Cara needs Ben's extra Moon, and Ben needs Alice's extra Sun.
+
+## What Setloop does
+
+Setloop collects one offer per player and looks for a cycle that satisfies all three. Each person gives one duplicate and receives their missing stamp. If any offer is missing or the offers don't form a complete cycle, everyone keeps their original stamps.
+
+The stamps are digital game pieces. You can play in a browser without signing up, paying, or connecting a wallet.
+
+## How it works
+
+1. **Start a room.** Choose a one-, three-, or five-minute round and share the invite link. The countdown starts when the third player joins.
+2. **Save a private offer.** Choose one extra stamp to give and one missing stamp to receive. Other collectors see only whether your offer is ready. You can change it until the round ends.
+3. **Finish together.** The timer can run out, or the host can finish early after all three offers are ready. A match moves all three stamps together.
+4. **Check the result.** An online round has a public receipt. It records each transfer or shows that no stamps moved.
+
+| Collector | Gives | Gets |
+| --- | --- | --- |
+| Alice | Sun to Ben | Star from Cara |
+| Ben | Moon to Cara | Sun from Alice |
+| Cara | Star to Alice | Moon from Ben |
+
+### What has been verified
+
+| Path | Status | Evidence |
+| --- | --- | --- |
+| Hosted multiplayer | Live on Vercel with private Blob storage | A three-player production test verified offer isolation, matching, and public receipt access. [Receipt](https://setloop.vercel.app/receipt/A4T4S3) |
+| Solo practice | Live in the browser | Uses the same matching rules and supports both outcomes. [Try it](https://setloop.vercel.app/practice) |
+| Local multiplayer | Runs with Node and SQLite | Tests cover concurrent joins and offers, repeated closes, and no-match rounds. [Tests](test/rooms.test.mjs) |
+| Solana and MagicBlock | Experimental devnet integration | Program and client are included. A full deployment and three-wallet settlement still need end-to-end verification. [Setup](#experimental-solana-and-magicblock) |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Browser["Browser"]
+      UI["Room and album UI"]
+      Practice["Solo practice"]
+      Verify["Receipt consistency check"]
+    end
+
+    subgraph Core["Shared application logic"]
+      API["Room API and seat authorization"]
+      Rules["Cycle matching and inventory checks"]
+    end
+
+    subgraph Storage["Storage by runtime"]
+      Blob["Private Vercel Blob · production"]
+      SQLite["SQLite · local Node"]
+      D1["D1 · optional Worker"]
+    end
+
+    Practice -->|"Same rules in the browser"| Rules
+    UI -->|"Seat credential on private actions"| API
+    API --> Rules
+    API -->|"Conditional room update"| Blob
+    API -->|"Versioned row update"| SQLite
+    API -->|"Versioned row update"| D1
+    API -->|"Closed-round record and SHA-256 digest"| Verify
+```
+
+### From offer to public receipt
+
+```mermaid
+sequenceDiagram
+    actor Host
+    participant Players as Two other collectors
+    participant API as Setloop API
+    participant Store as Private room store
+    actor Reader as Public receipt reader
+
+    Host->>API: Create room and get invite code
+    Players->>API: Join with invite code
+    API->>Store: Fill third seat and start countdown
+    par Host offer
+        Host->>API: Save private offer with seat credential
+    and Friend offers
+        Players->>API: Save each offer with its own seat credential
+    end
+    API->>Store: Save offers with version checks
+    Host->>API: Finish early once all are ready
+    Note over API,Store: A room read or action can also finalize an expired round
+    API->>Store: Read latest offers and album counts
+    alt All three offers match
+        API->>Store: Save all transfers and the receipt together
+    else No match
+        API->>Store: Save no-match receipt and original albums
+    end
+    Reader->>API: Open public receipt by room code
+    API-->>Reader: Outcome, transfers, album counts, and digest
+```
+
+A production room is one private Blob object. The server reads the latest version and writes only if that version still matches. If another request updates the room first, the server reloads it and tries again. This keeps all album changes and the receipt in one successful update.
+
+The browser recalculates the receipt's SHA-256 digest and checks whether the transfers produce the recorded album counts. These are consistency checks against the record served by Setloop. The hosted receipt names the Setloop server ledger as its source.
+
+## Run locally
+
+Use **Node.js 22.13 or newer**.
 
 ```sh
+git clone https://github.com/thesithunyein/setloop.git
+cd setloop
+npm ci
 npm start
 ```
 
-Open `http://127.0.0.1:4173`. On Windows, `Start Setloop.cmd` starts the same server and opens the app. The default SQLite file is `.data/setloop.sqlite`. Set `SETLOOP_DB` to choose another database file, `PORT` to change the port, or `SETLOOP_HOST` to bind another interface.
+Open [localhost:4173](http://127.0.0.1:4173/). On Windows, you can also run [Start Setloop.cmd](Start%20Setloop.cmd).
 
-Select **Practice on your own** to try both outcomes in one tab with sample stamps. The practice round uses the same matching rules as an online swap and runs without room storage.
+| Setting | Default or purpose |
+| --- | --- |
+| `PORT` | `4173` |
+| `SETLOOP_HOST` | `127.0.0.1` |
+| `SETLOOP_DB` | Override the SQLite path. The default is `.data/setloop.sqlite`. |
+| `SETLOOP_CHAIN_KEYPAIR` | Optional devnet coordinator key path for the experimental adapter |
 
-To test an online room on one device, open **Guide**, scroll to **Technical details**, and select **Open three-tab demo**. Open the Alice, Ben, and Cara seats in separate tabs. Save each player’s offer, then select **Finish round early** in Alice’s tab. **View public receipt** works without a private player link. For a no-match round, let the timer end before all three offers are saved.
-
-For a regular room, select a round duration, then send two people the room code. Player seats use separate bearer credentials. The public invite lets others join a vacant seat and does not contain the host credential. The demo launcher intentionally provides the three demo seat links to the browser that created the demo. An authenticated session receives the player’s own offer. Other players and observers receive only names and readiness while the room is open.
-
-## Verify a round
-
-- **Server round:** Open `/receipt/ROOMCODE` or enter the room code on **Verify a trade**. The browser recomputes a SHA-256 digest of the receipt and checks the before/after inventories. These checks validate the served record’s internal consistency. The source of the record is the Setloop server ledger.
-- **Solana devnet round:** Enter the committed round account address on **Verify a trade**. This path fetches the account from Solana devnet, checks the Setloop program owner and account layout, then displays the committed outcome and explorer link. It needs an actual deployed Setloop program and committed room.
-
-## Build and test the web app
+To try an online round on one device, open **Guide → Technical details → Open three-tab demo**. Open each sample player in a separate tab, save all three offers, then finish from Alice's tab. For a no-match round, let the timer expire with one offer missing.
 
 ```sh
-npm ci
 npm test
 npm run build
 ```
 
-The Node tests cover concurrent joins and offers, seat-level offer isolation, duplicate settle requests, expired no-match rounds, stale inventory and devnet receipt decoding. The Worker build embeds the application files and uses Cloudflare D1 for room storage. The same compare-and-swap database update writes all balances and the receipt in both runtimes. The D1 migration is in `drizzle/`.
+The tests cover seat-level offer visibility, concurrent joins and writes, repeated closes, expired rounds, stale inventory, and Solana receipt decoding. The Worker build emits `dist/server/` and uses a D1 binding named `DB` with the migration in `drizzle/`.
 
-## Vercel hosting
+## Deployment
 
-Setloop’s Vercel Function uses a **private Vercel Blob store**. Connect the store to the Vercel project so its credentials are injected into the function. The app reads the latest private room state and uses conditional writes so concurrent submissions can’t overwrite each other. Vercel uses the server ledger, and the public receipt distinguishes it from Solana devnet settlement.
+Production runs at [setloop.vercel.app](https://setloop.vercel.app/) from `main`. The [Vercel config](vercel.json) serves `public/`, packages the browser practice rules, and routes API requests to the [dispatch function](api/dispatch.mjs).
 
-## MagicBlock program
+To host your own copy, connect a **private Vercel Blob store** to your project and deploy after the connection is configured. The function supports the store ID with Vercel runtime identity or a project-scoped `BLOB_READ_WRITE_TOKEN`. Keep credentials in the deployment environment.
 
-The web app defaults to the server ledger. The `chain/` directory contains the Anchor implementation, a devnet smoke-test client, an RPC receipt reader, and a Node backend adapter that routes real rounds through the program. Devnet mode requires the SBF program deployed under the configured program ID and a funded **devnet-only** signing key. Both the smoke test and the backend adapter check that the program exists on devnet before starting.
+## Experimental Solana and MagicBlock
 
-- `create_room` sets three distinct player wallets and a separate settlement coordinator.
-- `create_offer` initializes a blank offer account on Solana. The client delegates the accounts to the Private Ephemeral Rollup, where `prepare_offer` creates the offer’s permission before it can hold intent data.
-- `seal_offer` stores the offer in private state. The intended account readers are the owning player and the settlement coordinator. The coordinator is a trusted role and cannot be one of the three player wallets. Participants’ offers do not appear in the public receipt.
-- `settle` validates each balance and each edge of the cycle before applying a single room-state update. It clears the offer contents and `publish_receipt` commits the room summary back to Solana. The program models stamps as credits in its own room account.
+The [Anchor program](chain/src/lib.rs) models stamp credits in a room account. It prepares permissions before writing offers into the private rollup, checks the full cycle at settlement, clears offers, and publishes a round summary. The settlement coordinator is a separate trusted role with access to the offers.
 
-On a machine with an installed Anchor-compatible Solana SBF toolchain, build inside `chain/`:
+The [Node adapter](chain/bridge.mjs) can route local rooms to a deployed devnet program. It signs on behalf of demo seats with test funds. The [receipt decoder](src/solana.mjs) checks the account owner and layout against the configured program ID.
+
+With an Anchor-compatible SBF toolchain, run these commands in `chain/`:
 
 ```sh
 cargo test --locked
@@ -58,13 +168,73 @@ cargo build-sbf -- --locked
 npm ci
 ```
 
-Deploy `target/deploy/setloop.so` to Solana **devnet** using a funded devnet-only wallet and the program keypair matching `declare_id!`. If using a new keypair, synchronize the program ID in `chain/Anchor.toml`, `chain/src/lib.rs`, `chain/client.mjs` and `src/solana.mjs` before building and deploying. The signer files belong outside this project.
+Deploy to **Solana devnet** using a funded devnet-only wallet and a program keypair that matches `declare_id!`. If you use a new program ID, update `chain/Anchor.toml`, `chain/src/lib.rs`, `chain/client.mjs`, and `src/solana.mjs`.
 
 ```sh
-npm run demo -- /path/to/funded-devnet-keypair.json
-npm run verify -- SOLANA_ROOM_ADDRESS
+npm run demo -- /absolute/path/to/devnet-keypair.json
+npm run verify -- YOUR_SOLANA_ROUND_ADDRESS
 ```
 
-The smoke test exercises a three-wallet match, checks that one seat cannot read another offer, commits to Solana, and reads the final inventories from the base layer. Treat the Solana and MagicBlock path as unverified until that run succeeds and returns a commitment signature. The approach follows the [MagicBlock sealed-bid example](https://docs.magicblock.gg/pages/templates/sealed-bid-auction) and [official examples repository](https://github.com/magicblock-labs/magicblock-examples).
+A complete devnet check requires a three-wallet swap, a cross-seat offer privacy check, a commitment signature, and a base-layer receipt with the expected album counts. To test from the web app locally, set `SETLOOP_CHAIN_KEYPAIR` before starting Node. Keep keypair files outside the repository. [MagicBlock examples](https://github.com/magicblock-labs/magicblock-examples)
 
-From the project root, set `SETLOOP_CHAIN_KEYPAIR` to the demo coordinator’s funded devnet-only key before `npm start` to enable the devnet web adapter. In PowerShell use `$env:SETLOOP_CHAIN_KEYPAIR = 'C:\path\to\devnet-only-keypair.json'`. The Node service derives and funds three separate demo seat keys per room and signs on their behalf. Browser players authenticate with their seat session. This mode is custodial for test stamp credits, uses a separate `setloop-devnet.sqlite` read model, and waits for the chain to confirm before reflecting offers and settlements. Preserve the same coordinator key if restarting in the middle of a room. The hosted D1 Worker uses the server ledger.
+## Project structure
+
+```text
+setloop/
+├── .gitignore / .vercelignore    Local data, secrets, and upload exclusions
+├── api/
+│   └── dispatch.mjs             Vercel API entry point
+├── chain/
+│   ├── Anchor.toml               Solana devnet configuration
+│   ├── Cargo.toml / Cargo.lock
+│   ├── package.json / package-lock.json
+│   ├── bridge.mjs                Node-to-devnet adapter
+│   ├── client.mjs                Program and private rollup client
+│   ├── demo.mjs                  Devnet smoke test
+│   ├── verify.mjs                Devnet receipt CLI
+│   └── src/
+│       ├── lib.rs                Anchor program and permissions
+│       └── matching.rs           Rust matching and inventory rules
+├── drizzle/
+│   ├── 0000_setloop_rooms.sql    D1 room schema
+│   └── meta/_journal.json        D1 migration journal
+├── public/
+│   ├── index.html                Shared HTML shell
+│   ├── app.js                    Landing, room, practice, receipt, and guide UI
+│   ├── styles.css                Styles and illustrations
+│   ├── setloop-logo.png           Current logo and favicon
+│   ├── favicon.svg / lettermark.svg / logo.svg
+│   └── google-sans.woff2 / Google-Sans-OFL.txt
+├── src/
+│   ├── api.mjs                   Room and receipt routes
+│   ├── blob-store.mjs            Private Blob and conditional writes
+│   ├── build.mjs                 Worker packaging
+│   ├── launch.mjs                Windows launch helper
+│   ├── room.mjs                  Shared matching rules and private room views
+│   ├── server.mjs                Local HTTP and SQLite runtime
+│   ├── solana.mjs                Devnet receipt decoder
+│   ├── store.mjs                 Versioned SQL storage
+│   └── worker.mjs                Optional D1 Worker runtime
+├── test/
+│   ├── blob-store.test.mjs        Fresh reads and stale-write rejection
+│   ├── rooms.test.mjs             Multiplayer, privacy, and settlement
+│   └── solana.test.mjs            Receipt account validation
+├── package.json / package-lock.json
+├── Start Setloop.cmd
+├── vercel.json
+├── README.md
+├── SECURITY.md
+├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+└── LICENSE
+```
+
+## Security and community
+
+The server stores hashes of player credentials and exposes an open offer only to its owner during normal play. Public receipts include player nicknames, album counts, and matching transfers. The hosted game trusts the Setloop server and its private store. Setloop has had functional testing and has yet to undergo an independent security audit.
+
+See the [security policy](SECURITY.md), [contribution guide](CONTRIBUTING.md), and [code of conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+Setloop's original software and documentation are under the [MIT License](LICENSE). Google Sans is bundled under the [SIL Open Font License](public/Google-Sans-OFL.txt). Branding and third-party assets retain their respective rights.

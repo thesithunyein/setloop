@@ -3,7 +3,6 @@ import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 const root = new URL('../',import.meta.url);
 const bundle = new URL('dist/server/',root);
 await mkdir(bundle,{recursive:true});
-await mkdir(new URL('dist/.openai/',root),{recursive:true});
 const types = {html:'text/html',js:'text/javascript',css:'text/css',svg:'image/svg+xml',txt:'text/plain'};
 const assets = {};
 for (const path of ['index.html','app.js','styles.css','logo.svg','favicon.svg','lettermark.svg','Google-Sans-OFL.txt']) {
@@ -16,5 +15,11 @@ for (const [path,type] of [['google-sans.woff2','font/woff2'],['setloop-logo.png
 await writeFile(new URL('assets.mjs',bundle),`export const assets=${JSON.stringify(assets)};\n`);
 for (const file of ['room.mjs','api.mjs','store.mjs','solana.mjs']) await cp(new URL(`src/${file}`,root),new URL(file,bundle));
 await cp(new URL('src/worker.mjs',root),new URL('index.js',bundle));
-await cp(new URL('.openai/hosting.json',root),new URL('dist/.openai/hosting.json',root));
+const hostingManifest = await readFile(new URL('.openai/hosting.json', root)).catch(error => {
+  if (error.code !== 'ENOENT') throw error;
+});
+if (hostingManifest) {
+  await mkdir(new URL('dist/.openai/', root), {recursive:true});
+  await writeFile(new URL('dist/.openai/hosting.json', root), hostingManifest);
+}
 console.log('Built Setloop Worker in dist/server.');

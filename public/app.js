@@ -11,6 +11,7 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp
 const count = inventory => inventory.filter(amount => amount > 0).length;
 const route = location.pathname.split('/').filter(Boolean);
 const code = (route[1] || '').toUpperCase();
+const shareOrigin = location.hostname === 'project-aassh.vercel.app' ? 'https://setloop.vercel.app' : location.origin;
 for (const link of document.querySelectorAll('.site-header nav a')) {
   if (link.pathname === location.pathname && !link.hash) link.setAttribute('aria-current', 'page');
 }
@@ -523,7 +524,7 @@ document.addEventListener('click', event => {
   if (type === 'copy-room' || type === 'copy-receipt' || type === 'copy-seat') {
     const isPrivate = type === 'copy-seat';
     const path = isPrivate ? playerLink(code, token) : `/${type === 'copy-room' ? 'room' : 'receipt'}/${code}`;
-    const link = new URL(path,location.origin).href;
+    const link = new URL(path,shareOrigin).href;
     Promise.resolve().then(() => navigator.clipboard.writeText(link))
       .then(() => toast(isPrivate ? 'Private link copied. Keep it for yourself.' : 'Link copied.'))
       .catch(() => {
