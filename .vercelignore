@@ -5,6 +5,7 @@ chain/target/
 chain/node_modules/
 chain/*.toml
 chain/Cargo.lock
+chain/package-lock.json
 chain/demo.mjs
 chain/award.mjs
 chain/verify.mjs
