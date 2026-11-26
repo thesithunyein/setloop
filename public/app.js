@@ -32,8 +32,8 @@ let pending = false;
 let refreshing = false;
 let actionVersion = 0;
 
-function stamp(type, extra = '') {
-  return `<svg class="stamp ${extra}" viewBox="0 0 100 116" aria-hidden="true" style="color:${ink[type]}"><rect x="4" y="4" width="92" height="108" rx="6" fill="#fff" stroke="#e6dadd" stroke-width="5" stroke-dasharray="1.5 5" stroke-linecap="round"/><rect x="12" y="12" width="76" height="92" rx="3" fill="${paper[type]}"/><rect x="17" y="17" width="66" height="82" rx="2" fill="none" stroke="currentColor" opacity=".43"/><path d="M21 80h58" stroke="currentColor" opacity=".45"/>${icons[type]}<text x="50" y="92" text-anchor="middle" fill="currentColor" font-family="var(--sans)" font-weight="700" font-size="8" letter-spacing="2">${type.toUpperCase()}</text></svg>`;
+function stamp(type) {
+  return `<svg class="stamp" viewBox="0 0 100 116" aria-hidden="true" style="color:${ink[type]}"><rect x="4" y="4" width="92" height="108" rx="6" fill="#fff" stroke="#e6dadd" stroke-width="5" stroke-dasharray="1.5 5" stroke-linecap="round"/><rect x="12" y="12" width="76" height="92" rx="3" fill="${paper[type]}"/><rect x="17" y="17" width="66" height="82" rx="2" fill="none" stroke="currentColor" opacity=".43"/><path d="M21 80h58" stroke="currentColor" opacity=".45"/>${icons[type]}<text x="50" y="92" text-anchor="middle" fill="currentColor" font-family="var(--sans)" font-weight="700" font-size="8" letter-spacing="2">${type.toUpperCase()}</text></svg>`;
 }
 
 function StampAlbum(inventory, name, {small = false, slot = -1, received} = {}) {
@@ -111,21 +111,80 @@ function createDialog() {
     <p class="helper">The clock starts when the third collector joins.</p><p class="form-error" role="alert"></p><button class="button accent wide">Create room</button></form>`);
 }
 
+function stampOrbit() {
+  const total = 720;
+  const angle = Math.PI * (3 - Math.sqrt(5));
+  const points = Array.from({length:total}, (_, index) => {
+    const y = 1 - 2 * (index + 0.5) / total;
+    const ring = Math.sqrt(1 - y * y);
+    const x = ring * Math.cos(index * angle);
+    const z = ring * Math.sin(index * angle);
+    const scale = 1 / (1 - z * 0.27);
+    return {x:232 + x * 124 * scale, y:169 + y * 124 * scale, z, radius:2.35 * scale};
+  });
+  const dots = points.sort((a,b) => a.z-b.z).map(({x,y,z,radius}) =>
+    `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius.toFixed(1)}" opacity="${(0.23 + (z + 1) * 0.36).toFixed(2)}"/>`).join('');
+  return `<svg class="stamp-orbit" viewBox="0 0 464 344" aria-hidden="true" focusable="false">
+    <path class="orbit-axis" d="M28 169H436M232 19v300"/>
+    <ellipse class="orbit-track" cx="232" cy="169" rx="204" ry="79" transform="rotate(-21 232 169)"/>
+    <circle class="orbit-guide" cx="232" cy="169" r="151"/>
+    <g class="orbit-points">${dots}</g>
+    <g transform="rotate(-21 232 169)">
+      <path class="orbit-front" d="M28 169a204 79 0 0 0 408 0"/>
+      <circle class="orbit-bead" cx="57" cy="209" r="5"/>
+      <circle class="orbit-bead" cx="232" cy="248" r="5"/>
+      <circle class="orbit-bead" cx="407" cy="209" r="5"/>
+    </g>
+    <path class="orbit-ticks" d="M29 45h21m-21 0v21m385-21h21m0 0v21M29 299h21m-21 0v-21m385 21h21m0 0v-21"/>
+  </svg>`;
+}
+
+const walkthrough = [
+  {title:'Invite two friends', text:'Start a room and send the invite link to two friends.', state:'Three collectors join', detail:'The clock starts when everyone is in.'},
+  {title:'Save an offer', text:'Choose the extra stamp you can give and the stamp you want.', state:'Three offers are ready', detail:'Other collectors see who’s ready. Each offer stays private.'},
+  {title:'Finish the swap', text:'When every offer fits, all three stamps move together.', state:'Three albums are complete', detail:'Alice gets Star, Ben gets Sun, and Cara gets Moon. Without a match, everyone keeps their stamps.'},
+];
+
+function renderWalkthrough(step) {
+  const copy = walkthrough[step];
+  const received = ['star', 'sun', 'moon'];
+  return `<div class="process-board" data-step="${step}" aria-hidden="true">
+    <div class="process-orbit"></div>
+    ${demoNames.map((name, index) => `<div class="process-seat">
+      <div class="process-object">
+        <div class="process-base"></div>
+        <div class="process-piece">${step === 0 ? `<span>${name[0]}</span>` : step === 1 ? lock : stamp(received[index])}</div>
+      </div>
+      <span class="process-name">${name}</span>
+    </div>`).join('')}
+    </div><div class="process-caption"><span class="process-signal" aria-hidden="true"></span><div><strong>${copy.state}</strong><p>${copy.detail}</p></div></div>`;
+}
+
 function renderHome() {
-  main.innerHTML = `<section class="hero"><div class="hero-copy"><p class="eyebrow">The stamp swap club</p>
+  main.innerHTML = `<section class="hero"><div class="hero-copy">
     <h1>One swap.<br><em>Three full sets.</em></h1>
     <p class="hero-lead">Play with two friends. Each of you gives away one extra stamp and gets the one you’re missing. No account, wallet, or payment is needed.</p>
-    <div class="actions"><button class="button accent" data-action="create">Start a room <span aria-hidden="true">↗</span></button><a class="button outline" href="/practice">Practice on your own</a></div>
-    <form class="home-join" data-form="code"><label>Join with code<input class="code-input" name="code" maxlength="6" minlength="6" required placeholder="ABC234" aria-describedby="join-error" autocomplete="off" autocapitalize="characters" spellcheck="false"></label><button class="button outline">Join <span aria-hidden="true">→</span></button><span id="join-error" class="form-error" role="alert"></span></form>
+    <div class="actions" id="join"><button class="button accent" data-action="create">Start a room <span aria-hidden="true">↗</span></button><a class="button outline" href="/practice">Practice on your own</a></div>
+    <form class="home-join" data-form="code"><label>Have a room code?<input class="code-input" name="code" maxlength="6" minlength="6" required placeholder="ABC234" aria-describedby="join-error" autocomplete="off" autocapitalize="characters" spellcheck="false"></label><button class="button outline">Join room <span aria-hidden="true">→</span></button><span id="join-error" class="form-error" role="alert"></span></form>
     <p class="live" id="live" role="status" hidden></p></div>
-    <figure class="hero-art"><div class="art-label"><span>Example swap</span><span>Sun · Moon · Star</span></div>
-    <div class="stamp-scene" aria-hidden="true"><div class="orbit"></div><span class="art-arrow top">⟶</span><span class="art-arrow left">⟶</span><span class="art-arrow right">⟶</span>${stamps.map(type => stamp(type, 'scene-stamp')).join('')}</div>
-    <figcaption class="art-caption"><span>Alice sends Sun to Ben. Ben sends Moon to Cara. Cara sends Star to Alice.</span></figcaption></figure></section>
-    <section class="how" id="how"><h2>How it works</h2><div class="how-grid">
-      <article><span class="step-marker" aria-hidden="true">1</span><div><h3>Invite two collectors</h3><p>Open a room and share its code.</p></div></article>
-      <article><span class="step-marker" aria-hidden="true">2</span><div><h3>Seal your offer</h3><p>Choose a duplicate and a missing stamp. Each collector sees only their own offer.</p></div></article>
-      <article><span class="step-marker" aria-hidden="true">3</span><div><h3>Swap together</h3><p>All three trades go through together. Without a match, everyone keeps their stamps.</p></div></article>
-    </div></section>
+    <figure class="hero-art">${stampOrbit()}<figcaption class="art-caption">
+      <strong>One loop, three stamps</strong><div class="art-stamps">${stamps.map(type => `<span>${stamp(type)}${capitalize(type)}</span>`).join('')}</div>
+    </figcaption></figure></section>
+    <section class="how" id="how" aria-labelledby="how-title">
+      <div class="landing-section-head"><h2 id="how-title">How it works</h2><a class="text-link" href="/practice">Try a practice swap <span aria-hidden="true">↗</span></a></div>
+      <div class="how-layout">
+        <ol class="how-steps">${walkthrough.map(({title,text}, index) => `<li><button type="button" class="how-step" data-walkthrough="${index}" aria-pressed="${index === 0}" aria-controls="walkthrough-preview"><span class="step-marker" aria-hidden="true">${index+1}</span><span><strong>${title}</strong><span>${text}</span></span></button></li>`).join('')}</ol>
+        <figure class="process" id="walkthrough-preview" aria-live="polite" aria-atomic="true">${renderWalkthrough(0)}</figure>
+      </div>
+    </section>
+    <section class="why" id="why" aria-labelledby="why-title">
+      <div class="why-intro"><h2 id="why-title">Why Setloop?</h2><p>A direct trade only works when two people want what the other has. Add a third collector and everyone can get the stamp they’re missing.</p></div>
+      <dl class="why-list">
+        <div><dt>Keep your offer private</dt><dd>Friends can see when you’re ready. Your stamp choices stay with you while the round is open.</dd></div>
+        <div><dt>Trade together or keep your stamps</dt><dd>Every collector gets the stamp they asked for, or all three albums stay as they were.</dd></div>
+        <div><dt>Share the result</dt><dd>Every finished online round has a public receipt you can open or share without signing in.</dd></div>
+      </dl>
+    </section>
     <section class="faq" id="faq" aria-labelledby="faq-title">
       <div class="faq-intro">
         <h2 id="faq-title">Frequently asked questions</h2>
@@ -140,6 +199,15 @@ function renderHome() {
         <details><summary>Where do I find the result of a swap?</summary><p>Open the public receipt from the results page or enter the room code on <a href="/verify">Find a receipt</a>. The receipt shows whether the swap happened and who got each stamp.</p></details>
       </div>
     </section>`;
+  const preview = document.querySelector('#walkthrough-preview');
+  const steps = [...document.querySelectorAll('[data-walkthrough]')];
+  for (const button of steps) {
+    button.addEventListener('click', () => {
+      if (button.getAttribute('aria-pressed') === 'true') return;
+      for (const step of steps) step.setAttribute('aria-pressed', String(step === button));
+      preview.innerHTML = renderWalkthrough(Number(button.dataset.walkthrough));
+    });
+  }
   api('/status').then(data => {
     const live = document.querySelector('#live');
     if (live && data.open > 0) {
