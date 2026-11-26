@@ -6,10 +6,10 @@ await mkdir(bundle,{recursive:true});
 await mkdir(new URL('dist/.openai/',root),{recursive:true});
 const types = {html:'text/html',js:'text/javascript',css:'text/css',svg:'image/svg+xml',txt:'text/plain'};
 const assets = {};
-for (const path of ['index.html','app.js','styles.css','logo.svg','favicon.svg','lettermark.svg','Inter-OFL.txt']) {
+for (const path of ['index.html','app.js','styles.css','logo.svg','favicon.svg','lettermark.svg','Google-Sans-OFL.txt']) {
   assets[`/${path}`] = [await readFile(new URL(`public/${path}`,root),'utf8'),types[path.split('.').pop()]];
 }
-for (const [path,type] of [['inter.woff2','font/woff2'],['setloop-logo.png','image/png']]) {
+for (const [path,type] of [['google-sans.woff2','font/woff2'],['setloop-logo.png','image/png']]) {
   assets[`/${path}`] = [(await readFile(new URL(`public/${path}`,root))).toString('base64'),type];
 }
 await writeFile(new URL('assets.mjs',bundle),`export const assets=${JSON.stringify(assets)};\n`);

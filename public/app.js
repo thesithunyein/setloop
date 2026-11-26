@@ -31,7 +31,7 @@ let offset = 0;
 let pending = false;
 
 function stamp(type, extra = '') {
-  return `<svg class="stamp ${extra}" viewBox="0 0 100 116" aria-hidden="true" style="color:${ink[type]}"><rect x="4" y="4" width="92" height="108" rx="6" fill="#fff" stroke="#e6dadd" stroke-width="5" stroke-dasharray="1.5 5" stroke-linecap="round"/><rect x="12" y="12" width="76" height="92" rx="3" fill="${paper[type]}"/><rect x="17" y="17" width="66" height="82" rx="2" fill="none" stroke="currentColor" opacity=".43"/><path d="M21 80h58" stroke="currentColor" opacity=".45"/>${icons[type]}<text x="50" y="92" text-anchor="middle" fill="currentColor" font-family="Inter,system-ui,sans-serif" font-weight="750" font-size="8" letter-spacing="2">${type.toUpperCase()}</text></svg>`;
+  return `<svg class="stamp ${extra}" viewBox="0 0 100 116" aria-hidden="true" style="color:${ink[type]}"><rect x="4" y="4" width="92" height="108" rx="6" fill="#fff" stroke="#e6dadd" stroke-width="5" stroke-dasharray="1.5 5" stroke-linecap="round"/><rect x="12" y="12" width="76" height="92" rx="3" fill="${paper[type]}"/><rect x="17" y="17" width="66" height="82" rx="2" fill="none" stroke="currentColor" opacity=".43"/><path d="M21 80h58" stroke="currentColor" opacity=".45"/>${icons[type]}<text x="50" y="92" text-anchor="middle" fill="currentColor" font-family="var(--sans)" font-weight="700" font-size="8" letter-spacing="2">${type.toUpperCase()}</text></svg>`;
 }
 
 function StampAlbum(inventory, name, {small = false, slot = -1, received} = {}) {
@@ -116,7 +116,21 @@ function renderHome() {
       <article><span class="step-marker" aria-hidden="true">1</span><div><h3>Invite two collectors</h3><p>Open a room and share its code.</p></div></article>
       <article><span class="step-marker" aria-hidden="true">2</span><div><h3>Seal your offer</h3><p>Choose a duplicate and a missing stamp. Each collector sees only their own offer.</p></div></article>
       <article><span class="step-marker" aria-hidden="true">3</span><div><h3>Swap together</h3><p>All three trades go through together. Without a match, everyone keeps their stamps.</p></div></article>
-    </div></section>`;
+    </div></section>
+    <section class="faq" id="faq" aria-labelledby="faq-title">
+      <div class="faq-intro">
+        <h2 id="faq-title">Frequently asked questions</h2>
+        <a class="text-link" href="/docs">Read the swap guide <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="faq-list">
+        <details><summary>How do I join a swap?</summary><p>Open the invite link or enter the six-character room code on the home page. The countdown starts when the third collector joins.</p></details>
+        <details><summary>Can I try Setloop on my own?</summary><p>Use <strong>Open demo room</strong> to get three player links. Open Alice, Ben, and Cara in separate tabs, then seal an offer in each tab. Alice can close the round once all three offers are ready.</p></details>
+        <details><summary>Who can see my offer?</summary><p>While the round is open, your seat shows your offer. Other collectors see your name and whether you’re ready. Share the room invite with your group and keep your personal seat link private.</p></details>
+        <details><summary>Can I change an offer after sealing it?</summary><p>Yes. Reopen your offer and save your updated choices before the round closes.</p></details>
+        <details><summary>What happens if there’s no match?</summary><p>Everyone keeps their stamps. The public receipt records the outcome without revealing unmatched offers.</p></details>
+        <details><summary>How do I verify a completed swap?</summary><p>Open the public receipt from the round results or look up the room code on <a href="/verify">Verify a trade</a>. The receipt shows the outcome, any transfers, and the settlement source.</p></details>
+      </div>
+    </section>`;
   api('/status').then(data => {
     const live = document.querySelector('#live');
     if (live && data.open > 0) {

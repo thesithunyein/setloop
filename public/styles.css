@@ -1,8 +1,8 @@
 @font-face {
-  font-family: Inter;
-  src: url("/inter.woff2") format("woff2");
+  font-family: "Google Sans";
+  src: url("/google-sans.woff2") format("woff2");
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 400 700;
   font-display: swap;
 }
 :root {
@@ -19,7 +19,7 @@
   --danger: #ad1526;
   --success: #23624b;
   --success-bg: #ebf7f1;
-  --sans: Inter, Geist, "Segoe UI", system-ui, sans-serif;
+  --sans: "Google Sans", "Segoe UI", system-ui, sans-serif;
   --radius: 16px;
   --shadow: 0 10px 32px #3518230b;
 }
@@ -126,7 +126,7 @@ summary:focus-visible {
   gap: 0;
   min-height: 44px;
   font-size: 1.55rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.075em;
   text-decoration: none;
   line-height: 1;
@@ -153,9 +153,9 @@ p {
 }
 h1,
 h2 {
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.04;
-  letter-spacing: -0.065em;
+  letter-spacing: -0.045em;
 }
 h1 {
   font-size: clamp(3rem, 6.3vw, 6rem);
@@ -180,7 +180,8 @@ h3 {
   font-size: 0.82rem;
 }
 .mono {
-  font-family: ui-monospace, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.025em;
 }
 .eyebrow {
   font-size: 0.75rem;
@@ -408,6 +409,68 @@ h3 {
 .how {
   border-top: 1px solid var(--line);
   padding-top: 32px;
+}
+.faq {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: clamp(24px, 5vw, 64px);
+  margin-top: clamp(40px, 6vw, 76px);
+  padding-top: 32px;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 24px;
+}
+.faq-intro h2 {
+  text-wrap: balance;
+}
+.faq-intro a,
+.faq-list p a {
+  color: var(--action-hover);
+  text-underline-offset: 4px;
+}
+.faq-list details {
+  border-bottom: 1px solid var(--line);
+}
+.faq-list details:first-child {
+  border-top: 1px solid var(--line);
+}
+.faq-list summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 12px 36px 12px 0;
+  cursor: pointer;
+  font-weight: 650;
+  list-style: none;
+}
+.faq-list summary::-webkit-details-marker {
+  display: none;
+}
+.faq-list summary:hover,
+.faq-list details[open] summary {
+  color: var(--action-hover);
+}
+.faq-list summary::before,
+.faq-list summary::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 12px;
+  height: 2px;
+  background: var(--action);
+}
+.faq-list summary::after {
+  rotate: 90deg;
+}
+.faq-list details[open] summary::after {
+  display: none;
+}
+.faq-list p {
+  max-width: 65ch;
+  margin-bottom: 16px;
+  padding-right: 28px;
+  color: var(--muted);
 }
 .how-grid,
 .album-grid,
@@ -938,6 +1001,10 @@ dialog .dismiss:hover {
     grid-template-columns: 1fr;
     gap: 8px;
   }
+  .faq {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
   .how-grid article {
     padding: 15px;
   }
@@ -955,6 +1022,9 @@ dialog .dismiss:hover {
     margin-top: 33px;
     flex-wrap: wrap;
   }
+  .footer nav {
+    flex-wrap: wrap;
+  }
   .footer nav a {
     font-size: 0.77rem;
   }
@@ -966,6 +1036,9 @@ dialog .dismiss:hover {
   }
 }
 @media (max-width: 365px) {
+  .nav .nav-faq {
+    display: none;
+  }
   .art-label,
   .art-caption {
     padding-inline: 14px;

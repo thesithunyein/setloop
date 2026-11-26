@@ -10,7 +10,7 @@ const contentTypes = new Map([
   ['/app.js', 'text/javascript'], ['/styles.css', 'text/css'], ['/favicon.svg', 'image/svg+xml'],
   ['/setloop-logo.png', 'image/png'],
   ['/logo.svg', 'image/svg+xml'], ['/lettermark.svg', 'image/svg+xml'],
-  ['/inter.woff2','font/woff2'], ['/Inter-OFL.txt','text/plain'],
+  ['/google-sans.woff2','font/woff2'], ['/Google-Sans-OFL.txt','text/plain'],
 ]);
 
 export function createSetloopServer(databasePath = ':memory:', clock = Date.now, chain = null) {
