@@ -1,11 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "node --check api/dispatch.mjs",
+  "buildCommand": "node --check api/dispatch.mjs && node -e \"require('node:fs').copyFileSync('src/room.mjs', 'public/room-rules.mjs')\"",
   "outputDirectory": "public",
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/dispatch?setloopPath=:path*" },
     { "source": "/:page(room|receipt|devnet)/:id", "destination": "/index.html" },
-    { "source": "/:page(collection|verify|docs)", "destination": "/index.html" }
+    { "source": "/:page(collection|verify|docs|practice)", "destination": "/index.html" }
   ]
 }

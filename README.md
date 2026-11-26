@@ -16,7 +16,9 @@ npm start
 
 Open `http://127.0.0.1:4173`. On Windows, `Start Setloop.cmd` starts the same server and opens the app. The default SQLite file is `.data/setloop.sqlite`. Set `SETLOOP_DB` to choose another database file, `PORT` to change the port, or `SETLOOP_HOST` to bind another interface.
 
-Select **Open demo room**. Open the Alice, Ben and Cara seats in separate tabs. Click **Lock in offer** for each player, then **Close room early** in Alice’s tab. The animation shows all three albums filling. **View public receipt** opens a page that works without a seat link. For a no-match round, let the timer end before all three seats are ready.
+Select **Practice on your own** to try both outcomes in one tab with sample stamps. The practice round uses the same matching rules as an online swap and runs without room storage.
+
+To test an online room on one device, open **Guide**, scroll to **Technical details**, and select **Open three-tab demo**. Open the Alice, Ben, and Cara seats in separate tabs. Save each player’s offer, then select **Finish round early** in Alice’s tab. **View public receipt** works without a private player link. For a no-match round, let the timer end before all three offers are saved.
 
 For a regular room, select a round duration, then send two people the room code. Player seats use separate bearer credentials. The public invite lets others join a vacant seat and does not contain the host credential. The demo launcher intentionally provides the three demo seat links to the browser that created the demo. An authenticated session receives the player’s own offer. Other players and observers receive only names and readiness while the room is open.
 

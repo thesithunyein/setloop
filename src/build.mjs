@@ -9,6 +9,7 @@ const assets = {};
 for (const path of ['index.html','app.js','styles.css','logo.svg','favicon.svg','lettermark.svg','Google-Sans-OFL.txt']) {
   assets[`/${path}`] = [await readFile(new URL(`public/${path}`,root),'utf8'),types[path.split('.').pop()]];
 }
+assets['/room-rules.mjs'] = [await readFile(new URL('src/room.mjs',root),'utf8'),'text/javascript'];
 for (const [path,type] of [['google-sans.woff2','font/woff2'],['setloop-logo.png','image/png']]) {
   assets[`/${path}`] = [(await readFile(new URL(`public/${path}`,root))).toString('base64'),type];
 }

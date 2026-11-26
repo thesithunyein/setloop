@@ -13,6 +13,7 @@ export default {
       url.searchParams.delete('setloopPath');
       request = new Request(url,request);
     }
+    if (request.method === 'GET' && /^\/api\/devnet\/[^/]+$/.test(url.pathname)) return handleApi(request, null);
     const oidcToken = request.headers.get('x-vercel-oidc-token') || process.env.VERCEL_OIDC_TOKEN;
     const storeId = process.env.BLOB_STORE_ID;
     if (!process.env.BLOB_READ_WRITE_TOKEN && !(storeId && oidcToken)) {

@@ -8,6 +8,7 @@ import { roomStore, SCHEMA } from './store.mjs';
 
 const contentTypes = new Map([
   ['/app.js', 'text/javascript'], ['/styles.css', 'text/css'], ['/favicon.svg', 'image/svg+xml'],
+  ['/room-rules.mjs', 'text/javascript'],
   ['/setloop-logo.png', 'image/png'],
   ['/logo.svg', 'image/svg+xml'], ['/lettermark.svg', 'image/svg+xml'],
   ['/google-sans.woff2','font/woff2'], ['/Google-Sans-OFL.txt','text/plain'],
@@ -42,7 +43,8 @@ export function createSetloopServer(databasePath = ':memory:', clock = Date.now,
         return;
       }
       const path = contentTypes.has(url.pathname) ? url.pathname : '/index.html';
-      const bytes = await readFile(new URL(`../public${path}`, import.meta.url));
+      const asset = path === '/room-rules.mjs' ? '../src/room.mjs' : `../public${path}`;
+      const bytes = await readFile(new URL(asset, import.meta.url));
       const type = contentTypes.get(path) || 'text/html';
       response.writeHead(200, {'Content-Type': (type === 'image/png' || type.startsWith('font/')) ? type : `${type}; charset=utf-8`, 'X-Content-Type-Options': 'nosniff'});
       response.end(incoming.method === 'HEAD' ? undefined : bytes);

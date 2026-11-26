@@ -6,4 +6,5 @@ target/
 .env.*
 .openai/
 .vercel/
+public/room-rules.mjs
 *.keypair.json
