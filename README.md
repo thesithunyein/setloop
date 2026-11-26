@@ -13,6 +13,18 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-211b20?style=flat-square"></a>
 </p>
 
+## MagicBlock Blitz v10 eligibility evidence
+
+Setloop integrates **MagicBlock Private Ephemeral Rollups on Solana devnet**. The program delegates the round and offer accounts, restricts who can read sealed offers, matches the three offers inside the private rollup, and commits the round result to Solana. After a match, a separate Solana transaction transfers all three SPL stamps between the demo wallets together. Everyday multiplayer uses Setloop's server ledger. Judges can try the deployed MagicBlock integration from the live devnet demo.
+
+| Check | Evidence |
+| --- | --- |
+| Blitz v10 integration rule | [Official eligibility and judging criteria](https://build.magicblock.app/?event=17&stage=blitz) |
+| Executable Setloop program on Solana devnet | [Program `GHWCZYzCsEEiYvdCVQ5o9aYyserYiJ3TX2tqb6hS3di9`](https://explorer.solana.com/address/GHWCZYzCsEEiYvdCVQ5o9aYyserYiJ3TX2tqb6hS3di9?cluster=devnet) · [Anchor source](chain/src/lib.rs) |
+| Delegation to MagicBlock's private validator | [Delegation transaction](https://explorer.solana.com/tx/3RuLq8QejMW5qyM3Gk7jQCsrTsAToFUxPaZ1tuKYzWjTpkcw3tR7QaGKC5MAZ9HTRjDpDpGMYPTpZ86vbcZqsYzr?cluster=devnet) |
+| Private rollup result committed back to Solana | [Live judge match commitment](https://explorer.solana.com/tx/4FHLVfVZJfdLvf8WKFMgrZj4UuRrAwRiGTVLNuZDCXhBAxVyhu5T8YQYW8w3AJaKYMNQZPCnMMakLAEBi4pmVCb7?cluster=devnet) · [No-match commitment](https://explorer.solana.com/tx/3LuJCdQWV9dP7w3FrJoaHTJwW5ujCJoPuVmyLu4yoNMcSNf9v7AzPXmdGqZoFjrxkWJw9RY6UEA1t3uMiRyJaxGu?cluster=devnet) |
+| Public demo and proof | [Play the live judge demo](https://setloop.vercel.app/blitz#live-demo) · [Verified three-round walkthrough](https://setloop.vercel.app/blitz#verified-stamps) · [Evidence JSON](https://setloop.vercel.app/blitz-evidence.json) |
+
 ## Try it
 
 | Start here | What you can verify |
@@ -222,6 +234,7 @@ setloop/
 │   ├── award.mjs                 Fixed-supply devnet completion badges
 │   ├── client.mjs                Program and private rollup client
 │   ├── demo.mjs                  Devnet smoke test
+│   ├── stamps.mjs                Persistent SPL stamp albums and transfers
 │   ├── verify.mjs                Devnet receipt CLI
 │   └── src/
 │       ├── lib.rs                Anchor program and permissions
@@ -241,6 +254,7 @@ setloop/
 │   ├── api.mjs                   Room and receipt routes
 │   ├── blob-store.mjs            Private Blob and conditional writes
 │   ├── build.mjs                 Worker packaging
+│   ├── judge.mjs                 Hosted devnet demo and settlement coordination
 │   ├── launch.mjs                Windows launch helper
 │   ├── room.mjs                  Shared matching rules and private room views
 │   ├── server.mjs                Local HTTP and SQLite runtime
