@@ -1471,7 +1471,7 @@ dialog .dismiss:hover {
     padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
 }
-.judge-live { scroll-margin-top: 5rem; }
+.judge-live, #verified-stamps { scroll-margin-top: 5rem; }
 .judge-guide { margin: 1.2rem 0 .8rem; font-weight: 650; }
 .judge-seats { display: flex; flex-wrap: wrap; gap: .55rem; margin: 1rem 0; }
 .judge-seat-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: center; margin-block: 1rem; }

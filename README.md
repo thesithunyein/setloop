@@ -66,7 +66,7 @@ Classic rounds start with one possible offer per collector. Choice rounds start 
 
 Setloop signs for the three hosted demo wallets. The private rollup matches the offers and commits the decision to Solana. After verifying that commitment, the service signs one separate Solana transaction for all three wallet-to-wallet stamp transfers. On retry, a receipt-specific marker in that transaction prevents the service from transferring the stamps twice. A no-match result sends no stamp transaction. The room receipt reports the rollup's round rules and simulated starting inventory. The judge page reports the actual SPL balances, including stamps carried from earlier rounds.
 
-The sponsored demo has a limited number of sessions. If live devnet is unavailable or sponsorship is exhausted, the judge page links to verified examples.
+The sponsored demo has a limited number of sessions. If live devnet is unavailable or sponsorship is exhausted, open the [verified three-round production example](https://setloop.vercel.app/blitz#verified-stamps). It includes the two SPL swaps, the no-match receipt, and a claim to another wallet. [My albums](https://setloop.vercel.app/collection) shows saved demo albums when you return in the same browser.
 
 ## Architecture
 

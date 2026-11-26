@@ -17,6 +17,26 @@
       "network": "private-er"
     }
   ],
+  "stampDemo": {
+    "rounds": [
+      {
+        "address": "CsMZwNA67cEhhtDnrsuom8N44GHNQG91DzEvrbQkAJCX",
+        "signature": "4FHLVfVZJfdLvf8WKFMgrZj4UuRrAwRiGTVLNuZDCXhBAxVyhu5T8YQYW8w3AJaKYMNQZPCnMMakLAEBi4pmVCb7",
+        "stampSignature": "64DELx6znymhCpAeVcZGmEoEj8xNzerKYACaNamAVJ3ic2Un9sgXeW4V6F5D6ZX4FtBgQ3Lw8GeTpFfXPKAZBroG"
+      },
+      {
+        "address": "BynnUwjm9mqZx8NnjBWAjB7MhV6GR2cVFpYDnw1mKXQg",
+        "signature": "3LuJCdQWV9dP7w3FrJoaHTJwW5ujCJoPuVmyLu4yoNMcSNf9v7AzPXmdGqZoFjrxkWJw9RY6UEA1t3uMiRyJaxGu",
+        "stampSignature": null
+      },
+      {
+        "address": "69cxWSEnWQfz2tX3esjDNYES7No4okZXNrtJgfnvPz8r",
+        "signature": "3WhnxTX99KeSRYrNXnGh79pM2aYgNmGCbqD9v3SeMDMU19TnCWJY18wUGv29zjxM3Bqkq9eebz8RvzEGHEQ3AhQ6",
+        "stampSignature": "5taF2LHpfHiLRmebLAy19xwsMGo5KpgEM6H9BuLZCcxxB6FarrpGgtvWh1JbBxgFbkV8sGUyNa8U4GriXyPfQwyD"
+      }
+    ],
+    "claim": "5sMix7gfhy3nNHC3oB6L96kYFMoWNV5jknYATm9FAzFcoGYDriYznanYesc1NLzWxm3XRenprMZTWtjmHXr2EDcj"
+  },
   "collectible": {
     "mint": "hXKUAee2Yrh8gaEp1XqFoPd2bjDNCqCSr2cEzRAeHUy",
     "signature": "5b6JmDSDzctQ6ouzoWxjtNoaBPa1CMyLWbBPQ1sZgN4313mTnWKEWEmZBJjsk2iy8AnTxiPyaxL1demeJegaphJ3",

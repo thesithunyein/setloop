@@ -393,6 +393,7 @@ async function renderBlitz() {
   const matched = rounds.find(round => round.network === 'private-er' && round.result === 'matched');
   const noMatch = rounds.find(round => round.network === 'private-er' && round.result === 'no-match');
   const edition = published?.collectible;
+  const stampProof = published?.stampDemo;
   main.innerHTML = `<div class="view">
     <header class="page-heading"><p class="eyebrow">MagicBlock Blitz v10</p><h1>Setloop demo and proof</h1>
       <p class="muted">Three collectors make private offers. When the offers form a cycle, all three albums fill together.</p>
@@ -403,8 +404,15 @@ async function renderBlitz() {
       <div id="judge-controls"></div>
       <p class="helper" id="judge-status" role="status" aria-live="polite"></p>
       <p class="form-error" id="judge-error" role="alert"></p>
-      <div class="actions">${matched ? `<a class="text-link" href="/devnet/${encodeURIComponent(matched.address)}">Open the verified match ↗</a>` : ''}${noMatch ? `<a class="text-link" href="/devnet/${encodeURIComponent(noMatch.address)}">Open the verified no-match ↗</a>` : ''}<a class="text-link" href="/practice?round=choice">Play offline practice ↗</a></div>
+      <div class="actions">${stampProof ? '<a class="text-link" href="#verified-stamps">Open the verified wallet-stamp demo ↓</a>' : ''}
+      ${matched ? `<a class="text-link" href="/devnet/${encodeURIComponent(matched.address)}">Open the verified match ↗</a>` : ''}${noMatch ? `<a class="text-link" href="/devnet/${encodeURIComponent(noMatch.address)}">Open the verified no-match ↗</a>` : ''}<a class="text-link" href="/practice?round=choice">Play offline practice ↗</a></div>
     </section>
+    ${stampProof ? `<section class="panel" id="verified-stamps"><h2>Verified wallet-stamp demo</h2>
+      <p>Three private rounds used the same wallets. One offer changed in the replay. The final round spent the stamps received in the first swap.</p>
+      <ol class="guide-example proof-steps">${stampProof.rounds.map((round,i) => `<li><strong>${['All three albums completed','Everyone kept their stamps','The received stamps traded again'][i]}.</strong>
+        <a href="/devnet/${encodeURIComponent(round.address)}">Room receipt ↗</a> · <a href="${explorerTx(round.signature)}" target="_blank" rel="noopener">MagicBlock commitment ↗</a>
+        ${round.stampSignature ? ` · <a href="${explorerTx(round.stampSignature)}" target="_blank" rel="noopener">Stamp transfers ↗</a>` : ''}</li>`).join('')}</ol>
+      ${stampProof.claim ? `<a class="text-link" href="${explorerTx(stampProof.claim)}" target="_blank" rel="noopener">Verify Alice’s claim to another wallet ↗</a>` : ''}</section>` : ''}
     ${matched && noMatch ? `<section class="panel verdict"><h2>Check the result in one minute</h2>
       <ol class="guide-example proof-steps">
         <li><strong>Try the choices.</strong> In <a href="/practice?round=choice">solo practice</a>, offer Sun, Moon, and Star in that order, then change Alice’s offer to Moon and replay.</li>
@@ -431,7 +439,7 @@ async function renderBlitz() {
     <section class="panel participants"><h2>Try the product</h2><p>In Choice rounds, every player has two valid duplicates they can give. Make offers for all three players, then change one offer to see when a swap fails.</p>
     <div class="actions"><a class="button outline" href="/practice?round=choice">Practice both outcomes</a><a class="text-link" href="/receipt/ZUZSQ4">Matched web receipt ↗</a><a class="text-link" href="/receipt/XQYB42">No-match web receipt ↗</a></div></section></div>`;
   mountJudge();
-  if (location.hash === '#live-demo') document.querySelector('#live-demo').scrollIntoView();
+  if (['#live-demo','#verified-stamps'].includes(location.hash)) document.querySelector(location.hash)?.scrollIntoView();
 }
 
 const judgeSessionKey = 'setloop-live-judge-v1';
