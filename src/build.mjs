@@ -9,7 +9,9 @@ const assets = {};
 for (const path of ['index.html','app.js','styles.css','logo.svg','favicon.svg','lettermark.svg','Inter-OFL.txt']) {
   assets[`/${path}`] = [await readFile(new URL(`public/${path}`,root),'utf8'),types[path.split('.').pop()]];
 }
-assets['/inter.woff2'] = [(await readFile(new URL('public/inter.woff2',root))).toString('base64'),'font/woff2'];
+for (const [path,type] of [['inter.woff2','font/woff2'],['setloop-logo.png','image/png']]) {
+  assets[`/${path}`] = [(await readFile(new URL(`public/${path}`,root))).toString('base64'),type];
+}
 await writeFile(new URL('assets.mjs',bundle),`export const assets=${JSON.stringify(assets)};\n`);
 for (const file of ['room.mjs','api.mjs','store.mjs','solana.mjs']) await cp(new URL(`src/${file}`,root),new URL(file,bundle));
 await cp(new URL('src/worker.mjs',root),new URL('index.js',bundle));

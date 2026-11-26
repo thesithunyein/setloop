@@ -14,7 +14,7 @@ export default {
       return handleApi(request,store);
     }
     const [body,type] = Object.hasOwn(assets,path) ? assets[path] : assets['/index.html'];
-    const binary = type.startsWith('font/');
+    const binary = type === 'image/png' || type.startsWith('font/');
     const content = binary ? Uint8Array.from(atob(body),letter=>letter.charCodeAt(0)) : body;
     return new Response(request.method === 'HEAD' ? null : content,{headers:{'Content-Type':binary ? type : `${type}; charset=utf-8`,'X-Content-Type-Options':'nosniff'}});
   },

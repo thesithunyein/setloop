@@ -11,14 +11,17 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp
 const count = inventory => inventory.filter(amount => amount > 0).length;
 const route = location.pathname.split('/').filter(Boolean);
 const code = (route[1] || '').toUpperCase();
+for (const link of document.querySelectorAll('.site-header nav a')) {
+  if (link.pathname === location.pathname && !link.hash) link.setAttribute('aria-current', 'page');
+}
 const lock = '<svg class="lock" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="4" y="8" width="12" height="9" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 8V6a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.6"/></svg>';
 const icons = {
   sun: '<circle cx="50" cy="49" r="15" fill="currentColor"/><path d="M50 22v8m0 38v8M23 49h8m38 0h8M31 30l6 6m26 26 6 6m0-38-6 6M37 62l-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
   moon: '<path d="M62 26a24 24 0 1 0 11 36 26 26 0 0 1-11-36Z" fill="currentColor"/><path d="M68 37h12m-6-6v12m9 4h6m-3-3v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
   star: '<path d="m50 24 6.8 17.8L75 49l-18.2 7.2L50 74l-6.8-17.8L25 49l18.2-7.2L50 24Z" fill="currentColor"/><path d="M72 28h11m-5.5-5.5v11M23 67h10m-5-5v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
 };
-const ink = {sun:'#673a19', moon:'#273f59', star:'#344728'};
-const paper = {sun:'#f4cf93', moon:'#d6e3f1', star:'#dbe9b4'};
+const ink = {sun:'#a82431', moon:'#402d39', star:'#6c3657'};
+const paper = {sun:'#ffe6e5', moon:'#efebef', star:'#f7e7f0'};
 let timerId;
 let pollId;
 let toastId;
@@ -28,7 +31,7 @@ let offset = 0;
 let pending = false;
 
 function stamp(type, extra = '') {
-  return `<svg class="stamp ${extra}" viewBox="0 0 100 116" aria-hidden="true" style="color:${ink[type]}"><rect x="4" y="4" width="92" height="108" rx="6" fill="#fdf9e9" stroke="#eee7d3" stroke-width="6" stroke-dasharray="1.5 5" stroke-linecap="round"/><rect x="12" y="12" width="76" height="92" rx="3" fill="${paper[type]}"/><rect x="17" y="17" width="66" height="82" rx="2" fill="none" stroke="currentColor" opacity=".43"/><path d="M21 80h58" stroke="currentColor" opacity=".45"/>${icons[type]}<text x="50" y="92" text-anchor="middle" fill="currentColor" font-family="Georgia,serif" font-size="8" letter-spacing="2">${type.toUpperCase()}</text></svg>`;
+  return `<svg class="stamp ${extra}" viewBox="0 0 100 116" aria-hidden="true" style="color:${ink[type]}"><rect x="4" y="4" width="92" height="108" rx="6" fill="#fff" stroke="#e6dadd" stroke-width="5" stroke-dasharray="1.5 5" stroke-linecap="round"/><rect x="12" y="12" width="76" height="92" rx="3" fill="${paper[type]}"/><rect x="17" y="17" width="66" height="82" rx="2" fill="none" stroke="currentColor" opacity=".43"/><path d="M21 80h58" stroke="currentColor" opacity=".45"/>${icons[type]}<text x="50" y="92" text-anchor="middle" fill="currentColor" font-family="Inter,system-ui,sans-serif" font-weight="750" font-size="8" letter-spacing="2">${type.toUpperCase()}</text></svg>`;
 }
 
 function StampAlbum(inventory, name, {small = false, slot = -1, received} = {}) {
@@ -100,19 +103,19 @@ function createDialog() {
 }
 
 function renderHome() {
-  main.innerHTML = `<section class="hero"><div><p class="eyebrow">The stamp swap club</p>
-    <h1>Three collectors.<br>One trade.<br><em>Three completed sets.</em></h1>
-    <p class="hero-lead">Offer a duplicate in private. Get the stamp you’re missing when all three offers form a loop.</p>
+  main.innerHTML = `<section class="hero"><div class="hero-copy"><p class="eyebrow">The stamp swap club</p>
+    <h1>One swap.<br><em>Three full sets.</em></h1>
+    <p class="hero-lead">Three collectors each offer a duplicate in private. When the offers form a loop, everyone gets the stamp they’re missing.</p>
     <div class="actions"><button class="button accent" data-action="create">Start a swap room <span aria-hidden="true">↗</span></button><button class="button outline" data-action="demo">Open demo room</button></div>
     <form class="home-join" data-form="code"><label>Join with code<input class="code-input" name="code" maxlength="6" minlength="6" required placeholder="ABC234" aria-describedby="join-error" autocomplete="off" autocapitalize="characters" spellcheck="false"></label><button class="button outline">Join <span aria-hidden="true">→</span></button><span id="join-error" class="form-error" role="alert"></span></form>
-    <p class="live" id="live" hidden></p></div>
-    <figure class="hero-art" aria-label="Sun, Moon, and Star stamps form a three-way swap cycle"><div class="art-label"><span>Setloop Stamp Club</span><span>Sun · Moon · Star</span></div>
-    <div class="stamp-scene"><div class="orbit"></div><span class="art-arrow top" aria-hidden="true">⟶</span><span class="art-arrow left" aria-hidden="true">⟶</span><span class="art-arrow right" aria-hidden="true">⟶</span>${stamps.map(type => stamp(type, 'scene-stamp')).join('')}</div>
-    <figcaption class="art-caption"><span>Three stamps make a set</span><span><span class="dot"></span>One swap completes all three</span></figcaption></figure></section>
+    <p class="live" id="live" role="status" hidden></p></div>
+    <figure class="hero-art"><div class="art-label"><span>Example swap</span><span>Sun · Moon · Star</span></div>
+    <div class="stamp-scene" aria-hidden="true"><div class="orbit"></div><span class="art-arrow top">⟶</span><span class="art-arrow left">⟶</span><span class="art-arrow right">⟶</span>${stamps.map(type => stamp(type, 'scene-stamp')).join('')}</div>
+    <figcaption class="art-caption"><span>Alice sends Sun to Ben. Ben sends Moon to Cara. Cara sends Star to Alice.</span></figcaption></figure></section>
     <section class="how" id="how"><h2>How it works</h2><div class="how-grid">
-      <article><p class="num">01 · Join</p><h3>Bring two other collectors</h3><p>Open an invite-only room and share its code.</p></article>
-      <article><p class="num">02 · Seal</p><h3>Pick a duplicate and a missing stamp</h3><p>Each collector can see their own offer while the round is open.</p></article>
-      <article><p class="num">03 · Swap</p><h3>Close the loop</h3><p>All three trades go through together. Without a match, everyone keeps their stamps.</p></article>
+      <article><span class="step-marker" aria-hidden="true">1</span><div><h3>Invite two collectors</h3><p>Open a room and share its code.</p></div></article>
+      <article><span class="step-marker" aria-hidden="true">2</span><div><h3>Seal your offer</h3><p>Choose a duplicate and a missing stamp. Each collector sees only their own offer.</p></div></article>
+      <article><span class="step-marker" aria-hidden="true">3</span><div><h3>Swap together</h3><p>All three trades go through together. Without a match, everyone keeps their stamps.</p></div></article>
     </div></section>`;
   api('/status').then(data => {
     const live = document.querySelector('#live');
@@ -120,7 +123,14 @@ function renderHome() {
       live.innerHTML = `<span class="dot"></span>${data.open} ${data.open === 1 ? 'room' : 'rooms'} open`;
       live.hidden = false;
     }
-  }).catch(() => {});
+  }).catch(() => {
+    const live = document.querySelector('#live');
+    if (live) {
+      live.textContent = 'Swap rooms are temporarily unavailable.';
+      live.classList.add('unavailable');
+      live.hidden = false;
+    }
+  });
 }
 
 function RoomTimer(room) {

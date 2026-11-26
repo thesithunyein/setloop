@@ -1,3 +1,5 @@
+<img src="public/setloop-logo.png" alt="Setloop logo" width="144" height="144">
+
 # Setloop
 
 Three collectors privately offer duplicate stamps. A matching cycle moves all three stamps in one settlement. If the round closes without a cycle, everyone keeps their pieces.
