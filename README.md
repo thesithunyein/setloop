@@ -13,6 +13,8 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-211b20?style=flat-square"></a>
 </p>
 
+[![Setloop homepage with options to start a room, practice, or join with a code](docs/setloop-homepage.png)](https://setloop.vercel.app/)
+
 ## MagicBlock Blitz v10 eligibility evidence
 
 Setloop integrates **MagicBlock Private Ephemeral Rollups on Solana devnet**. The program delegates the round and offer accounts, restricts who can read sealed offers, matches the three offers inside the private rollup, and commits the round result to Solana. After a match, a separate Solana transaction transfers all three SPL stamps between the demo wallets together. Everyday multiplayer uses Setloop's server ledger. Judges can try the deployed MagicBlock integration from the live devnet demo.
